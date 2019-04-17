@@ -1,3 +1,14 @@
+(*
+
+playing with Dilworth's theorem,
+
+https://en.wikipedia.org/wiki/Dilworth's_theorem
+
+This is highly experimental...
+it's somewhat unclear how to best formulate the Theorem.
+
+*)
+
 (* Require Import List. *)
 
 (* Require Import Orders. *)
@@ -42,7 +53,7 @@ Section Dilworth.
       destruct T as [A_x | not_A_x].
         unfold Included in Incl.
         pose (Cs_x := Incl x A_x).
-        destruct Cs_x as [C Cs_C C_x].
+        destruct Cs_x as [C Cs_C x C_x].
         refine (ex_intro _ C _).
         split.
           exact Cs_C.
@@ -82,7 +93,6 @@ Section Dilworth.
       (forall X : Ensemble U, In _ Cs X -> In _ A (f X)) /\
       (forall X Y : Ensemble U, In _ Cs X -> In _ Cs Y -> f X = f Y -> X = Y)).
   Proof.
-    admit.
-  Admitted.
+  Abort All.
 
 End Dilworth.
