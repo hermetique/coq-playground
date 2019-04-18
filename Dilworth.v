@@ -54,22 +54,18 @@ Section Dilworth.
       - unfold Included in Incl.
         pose (Cs_x := Incl x A_x).
         destruct Cs_x as [C Cs_C x C_x].
-        refine (ex_intro _ C _).
-        split.
-        + exact Cs_C.
-        + exact C_x.
+        apply (ex_intro _ C); auto.
 
-      - refine (ex_intro _ (fun _ => False) _).
+      - apply (ex_intro _ (fun _ => False)).
         intro A_x.
         case (not_A_x A_x).
 
     * destruct (choice _ H) as [g g_prop].
-      refine (ex_intro _ g _).
+      apply (ex_intro _ g).
       split.
       - intros x A_x.
         pose (g_x := g_prop x A_x).
-        destruct g_x as [goal _].
-        exact goal.
+        destruct g_x as [goal _]; auto.
 
       - intros x y A_x A_y g_x_eq_g_y.
         pose (g_x := g_prop x A_x).
