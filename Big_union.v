@@ -1,4 +1,5 @@
 Require Import Coq.Sets.Powerset.
+Require Import Ensembles.
 
 (* Compute union of an ensemble of ensembles. *)
 
@@ -33,4 +34,45 @@ Proof.
     unfold Included in bound.
     destruct in_bu as [X' Xs_X' x X'_x].
     exact (bound X' Xs_X' x X'_x).
+Qed.
+
+Theorem Big_union_Empty_set:
+  forall U : Type, Big_union _ (Empty_set _) = Empty_set U.
+Proof.
+  intros.
+  apply Extensionality_Ensembles.
+  split; unfold Included; intros x H.
+  - destruct H.
+    destruct H.
+  - destruct H.
+Qed.
+
+Theorem Big_union_Singleton:
+  forall (U : Type) (X : Ensemble U), Big_union _ (Singleton _ X) = X.
+Proof.
+  intros.
+  apply Extensionality_Ensembles.
+  split; unfold Included; intros x H.
+  - destruct H.
+    destruct H.
+    exact H0.
+  - refine (in_in U (Singleton _ X) X _ x H).
+    split.
+Qed.
+
+Theorem Big_union_Couple:
+  forall (U : Type) (X : Ensemble U) (Y : Ensemble U), Big_union _ (Couple _ X Y) = Union _ X Y.
+Proof.
+  intros.
+  apply Extensionality_Ensembles.
+  split; unfold Included; intros x H.
+  - destruct H.
+    destruct H.
+    + apply Union_introl; auto.
+    + apply Union_intror; auto.
+  - destruct H.
+    + refine (in_in U (Couple _ X Y) X _ x H).
+      apply Couple_l.
+    + refine (in_in U (Couple _ X Y) Y _ x H).
+      apply Couple_r.
 Qed.
