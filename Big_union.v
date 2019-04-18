@@ -14,18 +14,18 @@ Theorem Big_union_is_Lub:
 Proof.
   intros U A Xs Incl.
   split. split. split.
-    unfold Included.
+  * unfold Included.
     intros x in_Big_union.
     destruct in_Big_union as [X Xs_X x X_x].
     unfold Included in Incl.
     exact (Incl X Xs_X x X_x).
 
-    simpl.
+  * simpl.
     unfold Included.
     intros X Xs_X x X_x.
     exact (in_in U Xs X Xs_X x X_x).
 
-    simpl.
+  * simpl.
     unfold Included.
     intros X ub x in_bu.
     destruct ub as [_ bound].
