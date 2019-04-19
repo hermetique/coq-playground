@@ -204,14 +204,10 @@ Module Type Dilworth.
   Proof.
     intros A x not_A_x.
     split.
-    - unfold Included.
-      intros.
-      apply Add_intro1.
-      assumption.
+    - auto with sets.
     - intro.
       rewrite H in not_A_x.
-      apply not_A_x.
-      apply Add_intro2.
+      auto with sets.
   Qed.
 
   Theorem dilworth_hard :
@@ -238,18 +234,12 @@ Module Type Dilworth.
       + intros; destruct H.
       + intros; destruct H.
     - (* we have picked a minimum element x in S... apply the induction hypothesis to S - {x}. *)
-      destruct mem as [x mem].
-      destruct mem as [S' mem].
-      destruct mem as [S_eq mem].
-      destruct mem as [not_S'_x x_min]. (* these repeated "destruct"s look stupid. *)
-      rewrite S_eq in IH.
-      destruct (IH S' (strict_included_add S' x not_S'_x)) as [Cs0 IH'].
-      destruct IH' as [A0 IH'].
-      destruct IH' as [f0 IH'].
-      destruct IH' as [U_Cs0 IH'].
-      destruct IH' as [chain_Cs0 IH'].
-      destruct IH' as [achain_A0 IH'].
-      destruct IH' as [f0_ran f0_injective].
+      destruct mem as (x & S' & S_eq & not_S'_x & x_min).
+      pose (T := IH).
+      rewrite S_eq in T.
+      destruct (T S' (strict_included_add S' x not_S'_x)) as
+        (Cs0 & A0 & f0 & U_Cs0 & chain_Cs0 & achain_A0 & f0_ran & f0_injective).
+      clear T.
 
       (* And here, the fun begins for real. From the antichain A0 we want to construct a new
          antichain A1 where each element a in A0 is replaced by the maximum element in the chain
