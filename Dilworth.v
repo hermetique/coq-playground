@@ -50,37 +50,34 @@ Module Type Dilworth.
   Proof.
     intros Cs A Incl chn achn.
     assert (forall x : U, exists C : Ensemble U, In _ A x -> In _ Cs C /\ In _ C x).
-    * intros x.
-      pose (T := classic (In _ A x)).
-      destruct T as [A_x | not_A_x].
-      - unfold Included in Incl.
-        pose (Cs_x := Incl x A_x).
-        destruct Cs_x as [C Cs_C x C_x].
+    {
+      intros x.
+      destruct (classic (In _ A x)) as [A_x | not_A_x].
+      + unfold Included in Incl.
+        destruct (Incl x A_x) as [C Cs_C x C_x].
         apply (ex_intro _ C); auto.
 
-      - apply (ex_intro _ (fun _ => False)).
+      + apply (ex_intro _ (fun _ => False)).
         intro A_x.
         case (not_A_x A_x).
+    }
+    destruct (choice _ H) as [g g_prop].
+    apply (ex_intro _ g).
+    split.
+    - intros x A_x.
+      destruct (g_prop x A_x) as [goal _]; auto.
 
-    * destruct (choice _ H) as [g g_prop].
-      apply (ex_intro _ g).
-      split.
-      - intros x A_x.
-        pose (g_x := g_prop x A_x).
-        destruct g_x as [goal _]; auto.
-
-      - intros x y A_x A_y g_x_eq_g_y.
-        pose (g_x := g_prop x A_x).
-        pose (g_y := g_prop y A_y).
-        rewrite g_x_eq_g_y in g_x.
-        destruct g_x as [Cs_g_y g_y_x].
-        destruct g_y as [_ g_y_y].
-        unfold anti_chain in achn.
-        unfold chain in chn.
-        pose (Rxyx := chn (g y) Cs_g_y x y g_y_x g_y_y).
-        destruct Rxyx as [Rxy | Ryx].
-        + exact (achn x y A_x A_y Rxy).
-        + exact (eq_sym (achn y x A_y A_x Ryx)).
+    - intros x y A_x A_y g_x_eq_g_y.
+      pose (g_x := g_prop x A_x).
+      pose (g_y := g_prop y A_y).
+      rewrite g_x_eq_g_y in g_x.
+      destruct g_x as [Cs_g_y g_y_x].
+      destruct g_y as [_ g_y_y].
+      unfold anti_chain in achn.
+      unfold chain in chn.
+      destruct (chn (g y) Cs_g_y x y g_y_x g_y_y) as [Rxy | Ryx].
+      + exact (achn x y A_x A_y Rxy).
+      + exact (eq_sym (achn y x A_y A_x Ryx)).
   Qed.
 
   Lemma case_finite_set:
@@ -117,25 +114,22 @@ Module Type Dilworth.
     induction Fin as [| S Fin IH x' new].
     - intros; destruct H.
     - intros x Sx'_x.
-      pose (H := case_finite_set S Fin); destruct H as [empty | elem].
+      destruct (case_finite_set S Fin) as [empty | elem].
       + apply (ex_intro _ x').
         rewrite empty.
         split.
         * apply Add_intro2.
         * intros; destruct H; destruct H; auto.
       + destruct elem as [x'' elem].
-        pose (IH' := IH x'' elem).
-        destruct IH' as [z IHz].
+        destruct (IH x'' elem) as (z & S_x & max_z).
         clear x'' elem IH.
-        destruct IHz as [S_z max_z].
-        pose (H := classic (R x' z)); destruct H as [Rx'z | not_Rx'z].
+        destruct (classic (R x' z)) as [Rx'z | not_Rx'z].
         * apply (ex_intro _ x').
           split.
           -- apply Add_intro2.
           -- intros y Sx'_y Ryx'.
              destruct Sx'_y as [y S_y| y y_x'].
-             ++ pose (Ord := Ord).
-                destruct Ord as [Refl Trans Anti].
+             ++ destruct Ord as [Refl Trans Anti].
                 unfold Transitive in Trans.
                 destruct (max_z y S_y (Trans _ _ _ Ryx' Rx'z)).
                 unfold Antisymmetric in Anti.
@@ -148,8 +142,7 @@ Module Type Dilworth.
              destruct Sx'_y as [y S_y| y y_x'].
              ++ exact (max_z y S_y Ryz).
              ++ destruct y_x'.
-                exfalso.
-                exact (not_Rx'z Ryz).
+                destruct (not_Rx'z Ryz).
   Qed.
 
   Lemma split_min_element:
