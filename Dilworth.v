@@ -358,9 +358,10 @@ Module Type Dilworth.
           + pose (goal := f0_ran (g0 x) (g0_ran x H)).
             rewrite g_inv in goal; auto.
       }
-      assert (forall (C : Ensemble U), exists (x : U),
-        In _ Cs0 C -> In _ C x /\
-        forall (A : Ensemble U) (z : U), anti_chain0 A -> In _ A z -> R z x -> z = x).
+      assert (forall (C : Ensemble U), exists (x : U), In _ Cs0 C ->
+        In _ C x /\
+        (exists (A : Ensemble U), anti_chain0 A /\ In _ A x) /\
+        (forall (A : Ensemble U) (z : U), anti_chain0 A -> In _ A z -> R z x -> z = x)).
       {
         assert (fin_S' : Finite _ S').
         {
@@ -391,7 +392,8 @@ Module Type Dilworth.
               apply (in_in _ Cs0 _ Cs0_C _ C_z).
             - assumption.
           }
-          destruct (split_min_element_chain D D_fin D_chain) as [empty | (x & D' & D_eq & new & D'_chain & x_min)].
+          destruct (split_min_element_chain D D_fin D_chain) as
+            [empty | (x & D' & D_eq & new & D'_chain & x_min)].
           - assert (In _ D (f0 C)).
             {
               unfold D.
@@ -402,8 +404,11 @@ Module Type Dilworth.
             rewrite empty in H0.
             destruct H0.
           - apply (ex_intro _ x).
-            split.
+            repeat split.
             * rewrite D_eq in D_sub_C.
+              intuition.
+            * assert (D_x : In _ D x). { rewrite D_eq; intuition. }
+              unfold In in D_x; unfold D in D_x.
               intuition.
             * intros A z ac0_A A_z R_z_x.
               destruct (id ac0_A) as (ac_A & to_A & _).
@@ -432,12 +437,19 @@ Module Type Dilworth.
         + apply (ex_intro _ U_wit); intuition.
       }
       destruct (choice _ H0) as [f1 f1_prop].
-      assert (anti_chain0 (Im _ _ Cs0 f1)).
+      pose (A := Im _ _ Cs0 f1).
+      assert (anti_chain0 A).
       {
-        unfold anti_chain0.
+        unfold A; unfold anti_chain0.
         repeat split.
-        - (* proving that we have obtained an antichain is another subtle step. *)
-          admit.
+        - clear IH x S_eq not_S'_x x_min S Fin S' U_Cs0.
+          unfold anti_chain.
+          intros x y A_x A_y R_x_y.
+          destruct A_x as [Cx Cs0_Cx x x_def]; rewrite x_def in *; clear x x_def.
+          destruct A_y as [Cy Cs0_Cy y y_def]; rewrite y_def in *; clear y y_def.
+          destruct (f1_prop _ Cs0_Cx) as (_ & (Ax & ac0_Ax & Ax_f1Cx) & _).
+          destruct (f1_prop _ Cs0_Cy) as (_ & _ & Ay_prop).
+          apply (Ay_prop Ax); auto.
         - intros C Cs0_C.
           apply (ex_intro _ (f1 C)).
           split.
