@@ -309,28 +309,29 @@ Module Type Dilworth.
       + intros; destruct H.
       + intros; destruct H.
       + intros; destruct H.
-    - (* we have picked a minimum element x in S... apply the induction hypothesis to S - {x}. *)
-      destruct mem as (x & S' & S_eq & not_S'_x & x_min).
+    - (* we have picked a minimum element s in S... apply the induction hypothesis to S - {s}. *)
+      destruct mem as (s & S' & S_eq & not_S'_s & s_min).
       pose (T := IH).
       rewrite S_eq in T.
-      destruct (T S' (strict_included_add _ S' x not_S'_x)) as
+      destruct (T S' (strict_included_add _ S' s not_S'_s)) as
         (Cs0 & A0 & f0 & U_Cs0 & chain_Cs0 & fin_A0 & sup_A0 & achain_A0 & f0_ran & f0_chn & f0_inj).
       clear T.
 
-      (* And here, the fun begins for real. From the antichain A0 we want to construct a new
-         antichain A1 where each element a in A0 is replaced by the maximum element in the chain
-         in Cs0 corresponding to a (given by the inverse of f0) that allows an antichain of the
-         same cardinality as A0 to be constructed. *)
+      (* Using the antichain A0 and the sets of chains Cs0, we construct an antichain A1 such that
+         each element x in A0 is replaced by the maximum element in the chain in Cs0 corresponding
+         to x (that chain is given by the inverse of f0) that is a member of an antichain that
+         contains an element from each element of Cs0 (these antichains are characterized by the
+         anti_chain0 definition). *)
       pose (anti_chain0 (A : Ensemble U) :=
         anti_chain A /\
         (forall C, In _ Cs0 C -> exists x, In _ A x /\ In _ C x) /\
         (forall (x : U), In _ A x -> exists (C : Ensemble U), In _ Cs0 C /\ In _ C x)).
-      assert (anti_chain0 A0).
+      assert (ac0_A0 : anti_chain0 A0).
       {
         destruct (dilworth_easy Cs0 A0 sup_A0 chain_Cs0 achain_A0) as (g0 & g0_A0 & g0_ran & g0_inj).
         assert (g_inv : forall (x : U), In _ A0 x -> f0 (g0 x) = x).
         {
-          clear IH x S_eq not_S'_x x_min anti_chain0.
+          clear IH s S_eq not_S'_s s_min anti_chain0.
           intros x A0_x.
           (* destruct (sup_A0 _ A0_x) as [C Cs0_C x C_x]. *)
           assert (A0_fg0x : In _ A0 (f0 (g0 x))). { intuition. }
@@ -346,7 +347,7 @@ Module Type Dilworth.
           - intuition.
         }
         unfold anti_chain0.
-        clear IH x S_eq not_S'_x x_min anti_chain0.
+        clear IH s S_eq not_S'_s s_min anti_chain0.
         repeat split.
         - assumption.
         - intros C Cs0_C.
@@ -369,7 +370,7 @@ Module Type Dilworth.
           - assumption.
           - rewrite S_eq; intuition.
         }
-        clear IH x S_eq not_S'_x x_min.
+        clear IH s S_eq not_S'_s s_min.
         intros.
         destruct (classic (In (Ensemble U) Cs0 C)) as [Cs0_C | not_Cs0_C].
         + intros.
@@ -401,8 +402,8 @@ Module Type Dilworth.
               * intuition.
               * apply (ex_intro _ A0); intuition.
             }
-            rewrite empty in H0.
-            destruct H0.
+            rewrite empty in H.
+            destruct H.
           - apply (ex_intro _ x).
             repeat split.
             * rewrite D_eq in D_sub_C.
@@ -425,9 +426,9 @@ Module Type Dilworth.
                 pose Ord; destruct Ord; unfold Transitive in t; unfold Reflexive in r.
                 apply (t _ _ _ R_z_x).
                 rewrite D_eq in D_x'.
-                destruct D_x'.
-                - pose (x_min x0); intuition.
-                - destruct H1; intuition.
+                destruct D_x' as [x' D'_x' | x' x_x'].
+                - pose (x_min x'); intuition.
+                - destruct x_x'; intuition.
               }
               destruct (ac_A _ _ A_z A_x' R_z_x').
               rewrite D_eq in D_x'.
@@ -436,13 +437,13 @@ Module Type Dilworth.
               -- destruct x_z; auto.
         + apply (ex_intro _ U_wit); intuition.
       }
-      destruct (choice _ H0) as [f1 f1_prop].
-      pose (A := Im _ _ Cs0 f1).
-      assert (anti_chain0 A).
+      destruct (choice _ H) as [f1 f1_prop]; clear H.
+      pose (A1 := Im _ _ Cs0 f1).
+      assert (ac0_A1 : anti_chain0 A1).
       {
-        unfold A; unfold anti_chain0.
+        unfold A1; unfold anti_chain0.
         repeat split.
-        - clear IH x S_eq not_S'_x x_min S Fin S' U_Cs0.
+        - clear IH s S_eq not_S'_s s_min S Fin S' U_Cs0.
           unfold anti_chain.
           intros x y A_x A_y R_x_y.
           destruct A_x as [Cx Cs0_Cx x x_def]; rewrite x_def in *; clear x x_def.
@@ -461,6 +462,9 @@ Module Type Dilworth.
           rewrite y_eq.
           apply (ex_intro _ C); intuition.
       }
+  clear A0 f0 fin_A0 sup_A0 achain_A0 f0_ran f0_chn f0_inj ac0_A0.
+  (* Now we have a maximum size antichain A1 for S' / Cs0, such that each of the
+     elements of A is maximal. We need to decide what to do with s. *)
   Abort All.
 
 End Dilworth.
