@@ -16,28 +16,43 @@ it's somewhat unclear how to best formulate the Theorem.
 (* Require Import Coq.Logic.FinFun. *)
 
 Load Big_union.
-
 Require Import Relations_1.
-
 Require Import Ensembles.
-
 Require Import Finite_sets.
-
 Require Import Finite_sets_facts.
-
 Require Import Coq.Logic.ClassicalChoice.
-
 Require Import Image.
 
+(* Hmm, need to do some more digging into foundations... we are using classical logic
+   so we should be able to define a function corresponding to In _ _ _. *)
+Lemma mem_ex:
+  forall {U} (A : Ensemble U),
+  exists mem, forall (x : U),
+    (In U A x -> mem x = true) /\
+    (~ In U A x -> mem x = false).
+Proof.
+  intros.
+  assert (forall (x : U), exists b, (In U A x -> b = true) /\ (~ In U A x -> b = false)).
+  {
+    intros.
+    destruct (classic (In U A x)).
+    - apply (ex_intro _ true); intuition.
+    - apply (ex_intro _ false); intuition.
+  }
+  destruct (choice _ H) as (mem & mem_prop).
+  apply (ex_intro _ mem).
+  assumption.
+Qed.
+
 Lemma included_add:
-  forall (U : Type) (A : Ensemble U) (x : U),
+  forall {U} (A : Ensemble U) (x : U),
   Included _ A (Add _ A x).
 Proof.
   intuition.
 Qed.
 
 Lemma strict_included_add:
-  forall (U : Type) (A : Ensemble U) (x : U),
+  forall {U} (A : Ensemble U) (x : U),
   ~ In _ A x -> Strict_Included _ A (Add _ A x).
 Proof.
   intros U A x not_A_x.
@@ -49,7 +64,7 @@ Proof.
 Qed.
 
 Lemma included_subtract:
-  forall (U : Type) (A : Ensemble U) (x : U),
+  forall {U} (A : Ensemble U) (x : U),
   Included _ (Subtract _ A x) A.
 Proof.
   unfold Included.
@@ -59,14 +74,14 @@ Proof.
 Qed.
 
 Lemma add_subtract_eq:
-  forall (U : Type) (A : Ensemble U) (x : U),
+  forall {U} (A : Ensemble U) (x : U),
   In _ A x -> A = Add _ (Subtract _ A x) x.
 Proof.
   intuition.
 Qed.
 
 Lemma in_add_iff:
-  forall (U : Type) (A : Ensemble U) (x y : U),
+  forall {U} (A : Ensemble U) (x y : U),
   In _ (Add _ A x) y <-> x = y \/ In _ A y.
 Proof.
   intros. split; intros.
@@ -99,8 +114,35 @@ Module Type Dilworth.
     unfold anti_chain; intuition.
   Qed.
 
+  Lemma chain_Empty_set: chain (Empty_set U).
+  Proof.
+    unfold chain; intros; destruct H.
+  Qed.
+
+  Lemma anti_chain_Empty_set: anti_chain (Empty_set U).
+  Proof.
+    unfold anti_chain; intros; destruct H.
+  Qed.
+
+  Lemma chain_Singleton: forall (x : U), chain (Singleton _ x).
+  Proof.
+    unfold chain.
+    intros x y z x_y x_z.
+    destruct x_y; destruct x_z.
+    destruct Ord as [r _ _]; unfold Reflexive in r.
+    intuition.
+  Qed.
+
+  Lemma anti_chain_Singleton: forall (x : U), anti_chain (Singleton _ x).
+  Proof.
+    unfold anti_chain.
+    intros x y z x_y x_z.
+    destruct x_y; destruct x_z.
+    auto.
+  Qed.
+
   Theorem dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
-    Included U A (Big_union U Cs) ->
+    Included U A (Big_union Cs) ->
     (forall (C : Ensemble U), In _ Cs C -> chain C) ->
     anti_chain A ->
     (exists f : U -> Ensemble U,
@@ -283,10 +325,10 @@ Module Type Dilworth.
   Theorem dilworth_hard :
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) (f : Ensemble U -> U),
-      (S = Big_union U Cs) /\
+      (S = Big_union Cs) /\
       (forall (C : Ensemble U), In _ Cs C -> chain C) /\
       Finite _ A /\
-      Included _ A (Big_union _ Cs) /\
+      Included _ A (Big_union Cs) /\
       anti_chain A /\
       (forall X : Ensemble U, In _ Cs X -> In _ A (f X)) /\
       (forall X : Ensemble U, In _ Cs X -> In _ X (f X)) /\
@@ -305,16 +347,22 @@ Module Type Dilworth.
       + intros; destruct H.
       + apply Empty_is_finite.
       + intuition.
-      + unfold anti_chain; intros; destruct H.
+      + apply anti_chain_Empty_set.
       + intros; destruct H.
       + intros; destruct H.
       + intros; destruct H.
     - (* we have picked a minimum element s in S... apply the induction hypothesis to S - {s}. *)
       destruct mem as (s & S' & S_eq & not_S'_s & s_min).
+      assert (fin_S' : Finite _ S').
+      {
+        apply (Finite_downward_closed _ S).
+        - assumption.
+        - rewrite S_eq; intuition.
+      }
       pose (T := IH).
       rewrite S_eq in T.
-      destruct (T S' (strict_included_add _ S' s not_S'_s)) as
-        (Cs0 & A0 & f0 & U_Cs0 & chain_Cs0 & fin_A0 & sup_A0 & achain_A0 & f0_ran & f0_chn & f0_inj).
+      destruct (T S' (strict_included_add S' s not_S'_s)) as
+        (Cs0 & A0 & f0 & S'_eq & chain_Cs0 & fin_A0 & sup_A0 & achain_A0 & f0_ran & f0_chn & f0_inj).
       clear T.
 
       (* Using the antichain A0 and the sets of chains Cs0, we construct an antichain A1 such that
@@ -322,11 +370,11 @@ Module Type Dilworth.
          to x (that chain is given by the inverse of f0) that is a member of an antichain that
          contains an element from each element of Cs0 (these antichains are characterized by the
          anti_chain0 definition). *)
-      pose (anti_chain0 (A : Ensemble U) :=
-        anti_chain A /\
-        (forall C, In _ Cs0 C -> exists x, In _ A x /\ In _ C x) /\
-        (forall (x : U), In _ A x -> exists (C : Ensemble U), In _ Cs0 C /\ In _ C x)).
-      assert (ac0_A0 : anti_chain0 A0).
+      pose (anti_chain0 (f : Ensemble U -> U) :=
+        anti_chain (Im _ _ Cs0 f) /\
+        (forall C, In _ Cs0 C -> In _ C (f C)) /\
+        (forall C D, In _ Cs0 C -> In _ Cs0 D -> f C = f D -> C = D)).
+      assert (ac0_f0 : anti_chain0 f0).
       {
         destruct (dilworth_easy Cs0 A0 sup_A0 chain_Cs0 achain_A0) as (g0 & g0_A0 & g0_ran & g0_inj).
         assert (g_inv : forall (x : U), In _ A0 x -> f0 (g0 x) = x).
@@ -349,38 +397,33 @@ Module Type Dilworth.
         unfold anti_chain0.
         clear IH s S_eq not_S'_s s_min anti_chain0.
         repeat split.
-        - assumption.
-        - intros C Cs0_C.
-          apply (ex_intro _ (f0 C)).
-          intuition.
-        - intros.
-          apply (ex_intro _ (g0 x)); split.
-          + intuition.
-          + pose (goal := f0_ran (g0 x) (g0_ran x H)).
-            rewrite g_inv in goal; auto.
+        - assert (Im _ _ Cs0 f0 = A0).
+          {
+            apply Extensionality_Ensembles; split; unfold Included; intros x H.
+            - destruct H as [C Cs0_C y y_eq]; rewrite y_eq in *; clear y y_eq.
+              intuition.
+            - apply (Im_intro _ _ Cs0 _ (g0 x)). intuition. symmetry. intuition.
+          }
+          rewrite H.
+          assumption.
+        - intuition.
+        - intros C D C_Cs0 D_Cs0. intuition.
       }
       assert (forall (C : Ensemble U), exists (x : U), In _ Cs0 C ->
         In _ C x /\
-        (exists (A : Ensemble U), anti_chain0 A /\ In _ A x) /\
-        (forall (A : Ensemble U) (z : U), anti_chain0 A -> In _ A z -> R z x -> z = x)).
+        (exists f, anti_chain0 f /\ x = f C) /\
+        (forall f D, anti_chain0 f -> In _ Cs0 D -> R (f D) x -> f D = x)).
       {
-        assert (fin_S' : Finite _ S').
-        {
-          apply (Finite_downward_closed _ S).
-          - assumption.
-          - rewrite S_eq; intuition.
-        }
         clear IH s S_eq not_S'_s s_min.
         intros.
         destruct (classic (In (Ensemble U) Cs0 C)) as [Cs0_C | not_Cs0_C].
         + intros.
-          pose (D (x : U) := In _ C x /\ exists A, anti_chain0 A /\ In _ A x).
+          pose (D (x : U) := exists f, anti_chain0 f /\ x = f C).
           assert (D_sub_C : Included _ D C).
           {
-            unfold Included.
-            unfold In.
-            unfold D.
-            intuition.
+            unfold Included; unfold D; intros x (f & ac0_f & x_fC).
+            destruct ac0_f as (_ & H & _).
+            rewrite x_fC; intuition.
           }
           assert (D_chain : chain D). { apply (chain_mono C); intuition. }
           assert (D_fin : Finite _ D).
@@ -388,19 +431,16 @@ Module Type Dilworth.
             apply (Finite_downward_closed _ C).
             apply (Finite_downward_closed _ S').
             - assumption.
-            - rewrite U_Cs0.
+            - rewrite S'_eq.
               intros z C_z.
-              apply (in_in _ Cs0 _ Cs0_C _ C_z).
+              apply (Big_union_def Cs0 _ Cs0_C _ C_z).
             - assumption.
           }
           destruct (split_min_element_chain D D_fin D_chain) as
             [empty | (x & D' & D_eq & new & D'_chain & x_min)].
           - assert (In _ D (f0 C)).
             {
-              unfold D.
-              split.
-              * intuition.
-              * apply (ex_intro _ A0); intuition.
+              unfold In; unfold D; apply (ex_intro _ f0); auto.
             }
             rewrite empty in H.
             destruct H.
@@ -410,61 +450,143 @@ Module Type Dilworth.
               intuition.
             * assert (D_x : In _ D x). { rewrite D_eq; intuition. }
               unfold In in D_x; unfold D in D_x.
-              intuition.
-            * intros A z ac0_A A_z R_z_x.
-              destruct (id ac0_A) as (ac_A & to_A & _).
-              destruct (to_A _ Cs0_C) as (x' & A_x' & C_x').
-              assert (D_x' : In _ D x').
+              assumption.
+            * intros f E ac0_f Cs0_E R_fE_x.
+              clear f0 f0_ran f0_chn f0_inj ac0_f0 A0 fin_A0 sup_A0 achain_A0.
+              assert (R_x_fC : R x (f C)).
               {
-                unfold In; unfold D.
-                split.
-                - assumption.
-                - apply (ex_intro _ A); intuition.
+                assert (D_fC : In _ D (f C)).
+                {
+                  unfold In; unfold D; apply (ex_intro _ f); auto.
+                }
+                rewrite D_eq in D_fC; rewrite in_add_iff in D_fC.
+                destruct D_fC as [x_fC | D'_fC].
+                - rewrite x_fC; destruct Ord as [r _ _]; unfold Reflexive in r; auto.
+                - pose (x_min (f C)); intuition.
               }
-              assert (R_z_x' : R z x').
+              assert (fE_fC : f E = f C).
               {
-                pose Ord; destruct Ord; unfold Transitive in t; unfold Reflexive in r.
-                apply (t _ _ _ R_z_x).
-                rewrite D_eq in D_x'.
-                destruct D_x' as [x' D'_x' | x' x_x'].
-                - pose (x_min x'); intuition.
-                - destruct x_x'; intuition.
+                destruct Ord as [_ t _]; unfold Transitive in t.
+                pose (t _ _ _ R_fE_x R_x_fC).
+                destruct ac0_f as (ax_f & _).
+                apply (ax_f); intuition.
               }
-              destruct (ac_A _ _ A_z A_x' R_z_x').
-              rewrite D_eq in D_x'.
-              destruct D_x' as [z D'_x0 | z x_z].
-              -- pose (x_min _ D'_x0); intuition.
-              -- destruct x_z; auto.
+              rewrite fE_fC in *.
+              destruct Ord as [_ _ a]; apply a; assumption.
         + apply (ex_intro _ U_wit); intuition.
       }
       destruct (choice _ H) as [f1 f1_prop]; clear H.
-      pose (A1 := Im _ _ Cs0 f1).
-      assert (ac0_A1 : anti_chain0 A1).
+      assert (ac0_f1 : anti_chain0 f1).
       {
-        unfold A1; unfold anti_chain0.
+        unfold anti_chain0.
         repeat split.
-        - clear IH s S_eq not_S'_s s_min S Fin S' U_Cs0.
+        - clear IH s S_eq not_S'_s s_min S Fin S' S'_eq fin_S'.
           unfold anti_chain.
           intros x y A_x A_y R_x_y.
           destruct A_x as [Cx Cs0_Cx x x_def]; rewrite x_def in *; clear x x_def.
           destruct A_y as [Cy Cs0_Cy y y_def]; rewrite y_def in *; clear y y_def.
-          destruct (f1_prop _ Cs0_Cx) as (_ & (Ax & ac0_Ax & Ax_f1Cx) & _).
-          destruct (f1_prop _ Cs0_Cy) as (_ & _ & Ay_prop).
-          apply (Ay_prop Ax); auto.
-        - intros C Cs0_C.
-          apply (ex_intro _ (f1 C)).
-          split.
-          + intuition.
-          + pose (f1_prop C); intuition.
-        - intros y f1Cs0_y.
-          destruct f1Cs0_y as [C Cs0_C y y_eq].
-          pose (f1_prop C).
-          rewrite y_eq.
-          apply (ex_intro _ C); intuition.
+          destruct (f1_prop _ Cs0_Cx) as (_ & (fx & ac0_fx & fxCx_f1Cx) & _).
+          destruct (f1_prop _ Cs0_Cy) as (_ & _ & fy_prop).
+          rewrite fxCx_f1Cx in R_x_y.
+          rewrite (fy_prop fx Cx ac0_fx Cs0_Cx R_x_y) in fxCx_f1Cx; assumption.
+        - intros C Cs0_C; pose (f1_prop C); intuition.
+        - intros C D Cs0_C Cs0_D f1C_f1D.
+          destruct (f1_prop _ Cs0_C) as (_ & (fx & ac0_fx & fxCx_f1Cx) & _).
+          destruct (id ac0_fx) as (ac_fx & C_fxC & fx_inj).
+          assert (R (f1 D) (fx D)).
+          {
+            destruct (f1_prop D Cs0_D) as (D_f1D & _ & f1_max).
+            pose (f1_max fx D ac0_fx Cs0_D).
+            assert (fxD : In _ D (fx D)). { pose (C_fxC D). intuition. }
+            assert (f1D : In _ D (f1 D)). { intuition. }
+            assert (chD : chain D). intuition.
+            destruct (chD _ _ fxD f1D).
+            - rewrite (e H); destruct Ord as [r _ _]; apply r.
+            - assumption.
+          }
+          rewrite <- f1C_f1D in H; rewrite fxCx_f1Cx in H.
+          pose (Im_intro _ _ Cs0 fx C Cs0_C (fx C) eq_refl).
+          intuition.
       }
-  clear A0 f0 fin_A0 sup_A0 achain_A0 f0_ran f0_chn f0_inj ac0_A0.
-  (* Now we have a maximum size antichain A1 for S' / Cs0, such that each of the
-     elements of A is maximal. We need to decide what to do with s. *)
+      pose (A1 := Im _ _ Cs0 f1).
+      clear A0 f0 fin_A0 sup_A0 achain_A0 f0_ran f0_chn f0_inj ac0_f0.
+      (* Now we have a maximum size antichain A1 for S' / Cs0, such that each of the
+         elements of A is maximal. We need to decide what to do with s. *)
+      destruct (classic (exists a, In _ A1 a /\ R s a)) as [ (a & A1_a & R_s_a) | no_a ].
+      + (* This is the harder case: A0 and A1 are antichains of maximal size,
+           so we need to incorporate s into a larger chain. *)
+        admit.
+      + apply (ex_intro _ (Add _ Cs0 (Singleton _ s))).
+        apply (ex_intro _ (Add _ A1 s)).
+        destruct (mem_ex Cs0) as [mem_Cs0 mem_Cs0_prop].
+        assert (A1_S' : Included U A1 S').
+        {
+          unfold A1; rewrite S'_eq.
+          intros x [C Cs0_C y y_eq]; rewrite y_eq in *; clear y y_eq.
+          destruct (f1_prop C Cs0_C) as (C_f1C & _).
+          apply (Big_union_def Cs0 C Cs0_C _ C_f1C).
+        }
+        pose (f C := if mem_Cs0 C then f1 C else s).
+        assert (f_s : f (Singleton _ s) = s).
+        {
+          assert (~ In (Ensemble U) Cs0 (Singleton _ s)).
+          {
+            intro.
+            apply not_S'_s.
+            rewrite S'_eq.
+            apply (Big_union_def Cs0 (Singleton _ s) H).
+            split.
+          }
+          destruct (mem_Cs0_prop (Singleton _ s)) as [_ mem_Cs0_s].
+          unfold f; rewrite (mem_Cs0_s H); auto.
+        }
+        assert (f_C : forall C, In _ Cs0 C -> f C = f1 C).
+        {
+          intros.
+          destruct (mem_Cs0_prop C) as [mem_Cs0_C _].
+          unfold f; rewrite (mem_Cs0_C H); auto.
+        }
+        apply (ex_intro _ f).
+        repeat split.
+        * rewrite Big_union_Add; rewrite <- S'_eq; rewrite S_eq.
+          intuition.
+        * intros; destruct H.
+          -- intuition.
+          -- destruct H; apply chain_Singleton.
+        * apply Add_preserves_Finite.
+          apply (Finite_downward_closed _ S' fin_S').
+          assumption.
+        * rewrite Big_union_Add.
+          intros z H.
+          destruct H as [x A1_x | b].
+          -- rewrite <- S'_eq; intuition.
+          -- intuition.
+        * unfold anti_chain; intros x y A1s_x A1s_y R_x_y.
+          destruct A1s_x as [x A1_x | x s_x]; destruct A1s_y as [y A1_y | y s_y].
+          -- destruct ac0_f1 as [ac_f1 _].
+            apply ac_f1; assumption.
+          -- destruct s_y. destruct ((s_min _ (A1_S' _ A1_x)) R_x_y).
+          -- destruct s_x; destruct no_a.
+            apply (ex_intro _ y); intuition.
+          -- destruct s_x; destruct s_y; auto.
+        * intros C [C' Cs0_C' | C' s_C'].
+          -- rewrite (f_C C' Cs0_C').
+            apply (Add_intro1); unfold A1; intuition.
+          -- destruct s_C'; rewrite f_s; intuition.
+        * intros C [C' Cs0_C' | C' s_C'].
+          -- rewrite (f_C C' Cs0_C').
+            destruct (f1_prop C' Cs0_C') as (H & _); assumption.
+          -- destruct s_C'; rewrite f_s; intuition.
+        * intros C' D' [C Cs0_C | C s_C] [D Cs0_D | D s_D]; clear C' D'.
+          -- rewrite (f_C C Cs0_C); rewrite (f_C D Cs0_D).
+            destruct ac0_f1 as (_ & _ & f1_inj); intuition.
+          -- rewrite (f_C C Cs0_C); destruct s_D; rewrite f_s; intros.
+            destruct not_S'_s; unfold A1 in A1_S'.
+            apply (A1_S' _ (Im_intro _ _ Cs0 f1 C Cs0_C _ (eq_sym H))).
+          -- destruct s_C; rewrite f_s; rewrite (f_C D Cs0_D); intros.
+            destruct not_S'_s; unfold A1 in A1_S'.
+            apply (A1_S' _ (Im_intro _ _ Cs0 f1 D Cs0_D _ H)).
+          -- destruct s_C; destruct s_D; auto.
   Abort All.
 
 End Dilworth.
