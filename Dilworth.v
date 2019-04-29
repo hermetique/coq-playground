@@ -580,12 +580,9 @@ Module Type Dilworth.
         }
         clear IH.
         assert (ac_A1 : anti_chain A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
-        (* Tricky instantiations follow. Don't trust them until all the 'admit's are gone! *)
-        apply (ex_intro _ (Add _ Cs2 C)).
-        apply (ex_intro _ A1).
-        apply (ex_intro _ f2 (* this is still wrong, we need to find a new function for A1. *)).
-        repeat split.
-        * rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite S_eq; rewrite S'_eq.
+        assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
+        {
+          rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite S_eq; rewrite S'_eq.
           rewrite Big_union_Add; unfold C; rewrite <- Union_add.
           apply (subst (fun H => Add _ H _)).
           apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
@@ -605,6 +602,25 @@ Module Type Dilworth.
             ++ apply (Big_union_def _ D); intuition.
             ++ apply (Big_union_def _ Ca); intuition.
             ++ apply (Big_union_def _ Ca); intuition.
+        }
+        destruct (dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
+        { rewrite <- S_eq'; rewrite S_eq; intuition. }
+        { intros; repeat destruct H; intuition. }
+        { assumption. }
+        assert (forall D, exists x, In _ (Add _ Cs2 C) D -> In _ A1 x /\ g3 x = D).
+        {
+          destruct (dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
+          intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs3_D | not_Cs3_D].
+          - admit.
+          - apply (ex_intro _ U_wit); intuition.
+        }
+        destruct (choice _ H) as [f3 f3_prop]; clear H.
+        (* Tricky instantiations follow. *)
+        apply (ex_intro _ (Add _ Cs2 C)).
+        apply (ex_intro _ A1).
+        apply (ex_intro _ f3).
+        repeat split.
+        * assumption.
         * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
         * apply (Finite_downward_closed _ S'); assumption.
         * rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite Big_union_Add.
@@ -627,9 +643,13 @@ Module Type Dilworth.
                 symmetry; apply X; assumption.
             ++ pose (f1_prop D); intuition.
         * assumption.
-        * admit.
-        * admit.
-        * admit.
+        * intros; pose (f3_prop X); intuition.
+        * intros; destruct (f3_prop X H) as [A1_f3X g3f3X_X]; pose (gm := g3_mem (f3 X)).
+          rewrite g3f3X_X in gm; intuition.
+        * intros X Y Cs3_X Cs3_Y f3X_f3Y.
+          destruct (f3_prop _ Cs3_X) as [_ HX]; rewrite <- HX.
+          destruct (f3_prop _ Cs3_Y) as [_ HY]; rewrite <- HY.
+          rewrite f3X_f3Y; auto.
       + (* Easy case: s is incomparable to the maximal antichain *)
         apply (ex_intro _ (Add _ Cs0 (Singleton _ s))).
         apply (ex_intro _ (Add _ A1 s)).
