@@ -553,7 +553,7 @@ Module Type Dilworth.
             ++ apply Union_introl; apply Union_introl; apply (Big_union_def _ D).
               ** split; auto; intro; destruct H0; auto.
               ** assumption.
-          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ]; eauto.
+          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ]; eauto with sets.
         }
         destruct (dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
         { rewrite <- S_eq'; rewrite S_eq; intuition. }
