@@ -16,6 +16,7 @@ it's somewhat unclear how to best formulate the Theorem.
 (* Require Import Coq.Logic.FinFun. *)
 
 Load Big_union.
+Load Chains.
 Require Import Relations_1.
 Require Import Ensembles.
 Require Import Finite_sets.
@@ -118,55 +119,10 @@ Module Type Dilworth.
   Parameter R : Relation U.
   Axiom Ord : Order U R.
 
-  Definition chain (X : Ensemble U) :=
-    (forall (x : U) (y : U), In U X x -> In U X y -> R x y \/ R y x).
-
-  Definition anti_chain (X : Ensemble U) :=
-    (forall (x : U) (y : U), In U X x -> In U X y -> R x y -> x = y).
-
-  Lemma chain_mono: forall (C : Ensemble U) (C' : Ensemble U),
-    chain C -> Included _ C' C -> chain C'.
-  Proof.
-    unfold chain; intuition.
-  Qed.
-
-  Lemma anti_chain_mono: forall (C : Ensemble U) (C' : Ensemble U),
-    anti_chain C -> Included _ C' C -> anti_chain C'.
-  Proof.
-    unfold anti_chain; intuition.
-  Qed.
-
-  Lemma chain_Empty_set: chain (Empty_set U).
-  Proof.
-    unfold chain; intros; destruct H.
-  Qed.
-
-  Lemma anti_chain_Empty_set: anti_chain (Empty_set U).
-  Proof.
-    unfold anti_chain; intros; destruct H.
-  Qed.
-
-  Lemma chain_Singleton: forall (x : U), chain (Singleton _ x).
-  Proof.
-    unfold chain.
-    intros x y z x_y x_z.
-    destruct x_y; destruct x_z.
-    destruct Ord as [r _ _]; unfold Reflexive in r.
-    intuition.
-  Qed.
-
-  Lemma anti_chain_Singleton: forall (x : U), anti_chain (Singleton _ x).
-  Proof.
-    unfold anti_chain.
-    intros x y z x_y x_z.
-    destruct x_y; destruct x_z.
-    auto.
-  Qed.
-
   Theorem dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
     Included U A (Big_union Cs) ->
-    (forall (C : Ensemble U), In _ Cs C -> chain C) ->
-    anti_chain A ->
+    (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
+    anti_chain _ R A ->
     (exists f : U -> Ensemble U,
       (forall x : U, In _ A x -> In _ (f x) x) /\
       (forall x : U, In _ A x -> In _ Cs (f x)) /\
@@ -320,9 +276,9 @@ Module Type Dilworth.
 
   Lemma split_min_element_chain:
     forall (C : Ensemble U), Finite U C ->
-    chain C ->
+    chain _ R C ->
     C = Empty_set _ \/
-    (exists (x : U) (C' : Ensemble U), C = Add _ C' x /\ ~ In _ C' x /\ chain C' /\
+    (exists (x : U) (C' : Ensemble U), C = Add _ C' x /\ ~ In _ C' x /\ chain _ R C' /\
       (forall y : U, In _ C' y -> ~ R y x /\ R x y)).
   Proof.
     intros C Fin chn.
@@ -332,7 +288,7 @@ Module Type Dilworth.
       refine (or_intror (ex_intro _ x (ex_intro _ C' _))); repeat split.
       + auto.
       + auto.
-      + apply (chain_mono C).
+      + apply (chain_mono _ _ C).
         * auto.
         * rewrite C_eq; intuition.
       + auto.
@@ -348,10 +304,10 @@ Module Type Dilworth.
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) (f : Ensemble U -> U),
       (S = Big_union Cs) /\
-      (forall (C : Ensemble U), In _ Cs C -> chain C) /\
+      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) /\
       Finite _ A /\
       Included _ A (Big_union Cs) /\
-      anti_chain A /\
+      anti_chain _ R A /\
       (forall X : Ensemble U, In _ Cs X -> In _ A (f X)) /\
       (forall X : Ensemble U, In _ Cs X -> In _ X (f X)) /\
       (forall X Y : Ensemble U, In _ Cs X -> In _ Cs Y -> f X = f Y -> X = Y)).
@@ -393,7 +349,7 @@ Module Type Dilworth.
          contains an element from each element of Cs0 (these antichains are characterized by the
          anti_chain0 definition). *)
       pose (anti_chain0 (f : Ensemble U -> U) :=
-        anti_chain (Im _ _ Cs0 f) /\
+        anti_chain _ R (Im _ _ Cs0 f) /\
         (forall C, In _ Cs0 C -> In _ C (f C)) /\
         (forall C D, In _ Cs0 C -> In _ Cs0 D -> f C = f D -> C = D)).
       assert (ac0_f0 : anti_chain0 f0).
@@ -447,7 +403,7 @@ Module Type Dilworth.
             destruct ac0_f as (_ & H & _).
             rewrite x_fC; intuition.
           }
-          assert (D_chain : chain D). { apply (chain_mono C); intuition. }
+          assert (D_chain : chain _ R D). { apply (chain_mono _ _ C); intuition. }
           assert (D_fin : Finite _ D).
           {
             apply (Finite_downward_closed _ C).
@@ -521,7 +477,7 @@ Module Type Dilworth.
             pose (f1_max fx D ac0_fx Cs0_D).
             assert (fxD : In _ D (fx D)). { pose (C_fxC D). intuition. }
             assert (f1D : In _ D (f1 D)). { intuition. }
-            assert (chD : chain D). intuition.
+            assert (chD : chain _ R D). { intuition. }
             destruct (chD _ _ fxD f1D).
             - rewrite (e H); destruct Ord as [r _ _]; apply r.
             - assumption.
@@ -548,9 +504,9 @@ Module Type Dilworth.
         rewrite S'_eq in H.
         destruct H as [Ca Cs0_Ca a C_a].
         pose (C := Add _ (Intersection _ Ca (fun x => R s x)) s). (* this will be the chain containing s *)
-        assert (chain_C : chain C).
+        assert (chain_C : chain _ R C).
         {
-          assert (chain Ca). { intuition. }
+          assert (chain _ R Ca). { intuition. }
           unfold C; unfold chain; unfold chain in H.
           assert (R s s). { destruct Ord as [r _ _]; unfold Reflexive in r; intuition. }
           intros x y x_prop y_prop; destruct x_prop as
@@ -579,7 +535,7 @@ Module Type Dilworth.
             intro; rewrite <- H in S_s; intuition.
         }
         clear IH.
-        assert (ac_A1 : anti_chain A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
+        assert (ac_A1 : anti_chain _ R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
         assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
         {
           rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite S_eq; rewrite S'_eq.
@@ -611,7 +567,8 @@ Module Type Dilworth.
         {
           destruct (dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
           intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs3_D | not_Cs3_D].
-          - admit.
+          - (* TODO: tricky cardinality reasoning coming up. Coq.Sets.Finite_sets should be useful here. *)
+            admit.
           - apply (ex_intro _ U_wit); intuition.
         }
         destruct (choice _ H) as [f3 f3_prop]; clear H.
@@ -633,7 +590,7 @@ Module Type Dilworth.
             ++ assumption.
             ++ intro; destruct H0; destruct H.
               unfold A1 in A1_a; destruct A1_a as [E Cs0_E z z_eq]; rewrite z_eq in *; clear z z_eq.
-              assert (chain_Ca : chain Ca). { intuition. }
+              assert (chain_Ca : chain _ R Ca). { intuition. }
               destruct (chain_Ca (f1 Ca) (f1 E)).
               ** pose (f1_prop Ca); intuition.
               ** pose (f1_prop E); intuition.
@@ -680,7 +637,7 @@ Module Type Dilworth.
           intuition.
         * intros; destruct H.
           -- intuition.
-          -- destruct H; apply chain_Singleton.
+          -- destruct H; apply chain_Singleton; apply Ord.
         * apply Add_preserves_Finite.
           apply (Finite_downward_closed _ S' fin_S').
           assumption.
