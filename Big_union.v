@@ -98,9 +98,6 @@ Proof.
   apply (Big_union_def _ X); intuition.
 Qed.
 
-Hint Resolve Big_union_def.
-Hint Extern 1 => rewrite Big_union_Empty_set.
-Hint Extern 1 => rewrite Big_union_Singleton.
-Hint Extern 1 => rewrite Big_union_Couple.
-Hint Extern 1 => rewrite Big_union_Union.
-Hint Extern 1 => rewrite Big_union_Add.
+Hint Resolve Big_union_def : sets.
+Hint Rewrite Big_union_Empty_set Big_union_Singleton Big_union_Couple Big_union_Union Big_union_Add : sets.
+Hint Extern 2 => autorewrite with sets : sets.
