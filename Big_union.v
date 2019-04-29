@@ -89,4 +89,13 @@ Proof.
   rewrite (Big_union_Union); rewrite (Big_union_Singleton); auto.
 Qed.
 
+Theorem Big_union_mono:
+  forall {U} (Xs Ys : Ensemble (Ensemble U)),
+  Included _ Xs Ys -> Included _ (Big_union Xs) (Big_union Ys).
+Proof.
+  intros U Xs Ys Xs_Ys x Xs_x.
+  destruct Xs_x as [X Xs_X x X_x].
+  apply (Big_union_def _ X); intuition.
+Qed.
+
 (* TODO: Add hints for better automation. *)

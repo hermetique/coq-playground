@@ -63,6 +63,15 @@ Proof.
     auto with sets.
 Qed.
 
+Lemma included_setminus:
+  forall {U} (A B : Ensemble U),
+  Included _ (Setminus _ A B) A.
+Proof.
+  unfold Included.
+  intros U A B x H.
+  destruct H; assumption.
+Qed.
+
 Lemma included_subtract:
   forall {U} (A : Ensemble U) (x : U),
   Included _ (Subtract _ A x) A.
@@ -87,6 +96,19 @@ Proof.
   intros. split; intros.
   - destruct H; intuition.
   - destruct H; try (rewrite H); intuition.
+Qed.
+
+Lemma in_intersection_iff:
+  forall {U} (A B : Ensemble U) x,
+  In _ (Intersection _ A B) x <-> In _ A x /\ In _ B x.
+Proof.
+  intros; split; intros; destruct H; intuition.
+Qed.
+
+Lemma subst:
+  forall {U V} (f : U -> V) x y, x = y -> f x = f y.
+Proof.
+  intros; rewrite H; auto.
 Qed.
 
 Module Type Dilworth.
@@ -512,20 +534,106 @@ Module Type Dilworth.
       clear A0 f0 fin_A0 sup_A0 achain_A0 f0_ran f0_chn f0_inj ac0_f0.
       (* Now we have a maximum size antichain A1 for S' / Cs0, such that each of the
          elements of A is maximal. We need to decide what to do with s. *)
+      assert (A1_S' : Included U A1 S').
+      {
+        unfold A1; rewrite S'_eq.
+        intros x [C Cs0_C y y_eq]; rewrite y_eq in *; clear y y_eq.
+        destruct (f1_prop C Cs0_C) as (C_f1C & _).
+        apply (Big_union_def Cs0 C Cs0_C _ C_f1C).
+      }
       destruct (classic (exists a, In _ A1 a /\ R s a)) as [ (a & A1_a & R_s_a) | no_a ].
       + (* This is the harder case: A0 and A1 are antichains of maximal size,
            so we need to incorporate s into a larger chain. *)
-        admit.
-      + apply (ex_intro _ (Add _ Cs0 (Singleton _ s))).
+        assert (In _ S' a). { intuition. }
+        rewrite S'_eq in H.
+        destruct H as [Ca Cs0_Ca a C_a].
+        pose (C := Add _ (Intersection _ Ca (fun x => R s x)) s). (* this will be the chain containing s *)
+        assert (chain_C : chain C).
+        {
+          assert (chain Ca). { intuition. }
+          unfold C; unfold chain; unfold chain in H.
+          assert (R s s). { destruct Ord as [r _ _]; unfold Reflexive in r; intuition. }
+          intros x y x_prop y_prop; destruct x_prop as
+            [_ [x x_prop] | x []]; destruct y_prop as [_ [y y_prop] | y []]; intuition.
+        }
+        pose (Cs1 := Add _ (Subtract _ Cs0 Ca) (Setminus _ Ca C)).
+        assert (Ca_a : In _ Ca a). { intuition. }
+        destruct (IH (Big_union Cs1)) as
+          [Cs2 (A2 & f2 & U1_U2 & Cs2_chain & Fin_A2 & A2_Cs2 & ac_A2 & f2_dom & f2_chn & f2_inj)].
+        {
+          assert (Cs1_S' : Included U (Big_union Cs1) S').
+          {
+            intros x Cs1_x.
+            unfold Cs1 in Cs1_x; clear Cs1.
+            rewrite S'_eq.
+            rewrite Big_union_Add in Cs1_x.
+            destruct Cs1_x.
+            - apply (Big_union_mono _ _ (included_subtract Cs0 Ca)); assumption.
+            - apply (Big_union_def _ Ca). { intuition. }
+              destruct H; assumption.
+          }
+          unfold Strict_Included.
+          split.
+          - rewrite S_eq; intuition.
+          - assert (S_s : In _ S s). { rewrite S_eq. intuition. }
+            intro; rewrite <- H in S_s; intuition.
+        }
+        clear IH.
+        assert (ac_A1 : anti_chain A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
+        (* Tricky instantiations follow. Don't trust them until all the 'admit's are gone! *)
+        apply (ex_intro _ (Add _ Cs2 C)).
+        apply (ex_intro _ A1).
+        apply (ex_intro _ f2 (* this is still wrong, we need to find a new function for A1. *)).
+        repeat split.
+        * rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite S_eq; rewrite S'_eq.
+          rewrite Big_union_Add; unfold C; rewrite <- Union_add.
+          apply (subst (fun H => Add _ H _)).
+          apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
+          -- destruct H as [D Cs0_D x D_x].
+            destruct (classic (D = Ca)) as [ | ].
+            ++ rewrite H in *; clear H.
+              destruct (classic (R s x)).
+              ** apply Union_intror; split; assumption.
+              ** apply Union_introl; apply Union_intror; split; try assumption.
+                intro; destruct H0.
+                --- destruct H0; unfold In in H1; intuition.
+                --- destruct H0; destruct Ord as [r _ _]; unfold Reflexive in r; intuition.
+            ++ apply Union_introl; apply Union_introl; apply (Big_union_def _ D).
+              ** split; auto; intro; destruct H0; auto.
+              ** assumption.
+          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ].
+            ++ apply (Big_union_def _ D); intuition.
+            ++ apply (Big_union_def _ Ca); intuition.
+            ++ apply (Big_union_def _ Ca); intuition.
+        * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
+        * apply (Finite_downward_closed _ S'); assumption.
+        * rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite Big_union_Add.
+          intros x A1_x.
+          destruct (classic (x = a)).
+          -- rewrite H in *; clear H.
+            apply Union_intror; unfold C; apply Add_intro1; split; assumption.
+          -- unfold A1 in A1_x; destruct A1_x as [D Cs0_D z z_eq]; rewrite z_eq in *; clear z z_eq.
+            apply Union_introl; apply Union_introl; apply (Big_union_def _ D); repeat split.
+            ++ assumption.
+            ++ intro; destruct H0; destruct H.
+              unfold A1 in A1_a; destruct A1_a as [E Cs0_E z z_eq]; rewrite z_eq in *; clear z z_eq.
+              assert (chain_Ca : chain Ca). { intuition. }
+              destruct (chain_Ca (f1 Ca) (f1 E)).
+              ** pose (f1_prop Ca); intuition.
+              ** pose (f1_prop E); intuition.
+              ** destruct (f1_prop E) as (_ & _ & X). assumption.
+                apply X; assumption.
+              ** destruct (f1_prop Ca) as (_ & _ & X). assumption.
+                symmetry; apply X; assumption.
+            ++ pose (f1_prop D); intuition.
+        * assumption.
+        * admit.
+        * admit.
+        * admit.
+      + (* Easy case: s is incomparable to the maximal antichain *)
+        apply (ex_intro _ (Add _ Cs0 (Singleton _ s))).
         apply (ex_intro _ (Add _ A1 s)).
         destruct (mem_ex Cs0) as [mem_Cs0 mem_Cs0_prop].
-        assert (A1_S' : Included U A1 S').
-        {
-          unfold A1; rewrite S'_eq.
-          intros x [C Cs0_C y y_eq]; rewrite y_eq in *; clear y y_eq.
-          destruct (f1_prop C Cs0_C) as (C_f1C & _).
-          apply (Big_union_def Cs0 C Cs0_C _ C_f1C).
-        }
         pose (f C := if mem_Cs0 C then f1 C else s).
         assert (f_s : f (Singleton _ s) = s).
         {
