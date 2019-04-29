@@ -38,7 +38,7 @@ Proof.
 Qed.
 
 Theorem Big_union_Empty_set:
-  forall {U}, Big_union (Empty_set _) = Empty_set U.
+  forall U, Big_union (Empty_set _) = Empty_set U.
 Proof.
   intros.
   apply Extensionality_Ensembles.
@@ -48,7 +48,7 @@ Proof.
 Qed.
 
 Theorem Big_union_Singleton:
-  forall {U} (X : Ensemble U), Big_union (Singleton _ X) = X.
+  forall U (X : Ensemble U), Big_union (Singleton _ X) = X.
 Proof.
   intros.
   apply Extensionality_Ensembles.
@@ -60,7 +60,7 @@ Proof.
 Qed.
 
 Theorem Big_union_Union:
-  forall {U} (Xs Ys : Ensemble (Ensemble U)),
+  forall U (Xs Ys : Ensemble (Ensemble U)),
   Big_union (Union _ Xs Ys) = Union _ (Big_union Xs) (Big_union Ys).
 Proof.
   intros.
@@ -75,14 +75,14 @@ Proof.
 Qed.
 
 Theorem Big_union_Couple:
-  forall {U} (X : Ensemble U) (Y : Ensemble U), Big_union (Couple _ X Y) = Union _ X Y.
+  forall U (X : Ensemble U) (Y : Ensemble U), Big_union (Couple _ X Y) = Union _ X Y.
 Proof.
   intros; rewrite <- Couple_as_union.
   rewrite Big_union_Union; repeat rewrite Big_union_Singleton; auto.
 Qed.
 
 Theorem Big_union_Add:
-  forall {U} (Xs : Ensemble (Ensemble U)) (Y : Ensemble U),
+  forall U (Xs : Ensemble (Ensemble U)) (Y : Ensemble U),
   Big_union (Add _ Xs Y) = Union _ (Big_union Xs) Y.
 Proof.
   intros; unfold Add.
@@ -98,4 +98,9 @@ Proof.
   apply (Big_union_def _ X); intuition.
 Qed.
 
-(* TODO: Add hints for better automation. *)
+Hint Resolve Big_union_def.
+Hint Extern 1 => rewrite Big_union_Empty_set.
+Hint Extern 1 => rewrite Big_union_Singleton.
+Hint Extern 1 => rewrite Big_union_Couple.
+Hint Extern 1 => rewrite Big_union_Union.
+Hint Extern 1 => rewrite Big_union_Add.

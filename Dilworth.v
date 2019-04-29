@@ -321,7 +321,7 @@ Module Type Dilworth.
       apply (ex_intro _ (Empty_set _)).
       apply (ex_intro _ (fun _ => U_wit)).
       repeat split.
-      + rewrite Big_union_Empty_set; auto.
+      + auto.
       + intros; destruct H.
       + apply Empty_is_finite.
       + intuition.
@@ -525,8 +525,7 @@ Module Type Dilworth.
             rewrite Big_union_Add in Cs1_x.
             destruct Cs1_x.
             - apply (Big_union_mono _ _ (included_subtract Cs0 Ca)); assumption.
-            - apply (Big_union_def _ Ca). { intuition. }
-              destruct H; assumption.
+            - destruct H; eauto.
           }
           unfold Strict_Included.
           split.
@@ -554,10 +553,7 @@ Module Type Dilworth.
             ++ apply Union_introl; apply Union_introl; apply (Big_union_def _ D).
               ** split; auto; intro; destruct H0; auto.
               ** assumption.
-          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ].
-            ++ apply (Big_union_def _ D); intuition.
-            ++ apply (Big_union_def _ Ca); intuition.
-            ++ apply (Big_union_def _ Ca); intuition.
+          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ]; eauto.
         }
         destruct (dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
         { rewrite <- S_eq'; rewrite S_eq; intuition. }
