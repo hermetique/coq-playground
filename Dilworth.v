@@ -203,6 +203,70 @@ Proof.
   - apply (Im_intro _ _ _ _ x); try symmetry; auto.
 Qed.
 
+Lemma power_set_empty_set:
+  forall {U}, Power_set _ (Empty_set U) = Singleton _ (Empty_set U).
+Proof.
+  intros.
+  apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
+  - destruct H; intuition.
+  - destruct H; split; auto with sets.
+Qed.
+
+Lemma power_set_add:
+  forall {U} (A : Ensemble U) x,
+  Power_set _ (Add _ A x) = Union _ (Power_set _ A) (Im _ _ (Power_set _ A) (fun B => Add _ B x)).
+Proof.
+  intros U A x.
+  apply Extensionality_Ensembles; unfold Same_set; split; intros z H.
+  - destruct H as [B B_Ax].
+    destruct (classic (In _ B x)).
+    + apply Union_intror.
+      apply (Im_intro _ _ _ _ (Subtract _ B x)).
+      * split.
+        apply (Inclusion_is_transitive _ _ (Subtract _ (Add U A x) x)).
+        -- apply incl_soustr; assumption.
+        -- intuition.
+      * intuition.
+    + apply Union_introl; split; intros y B_y.
+      destruct (B_Ax y).
+      * auto with sets.
+      * auto with sets.
+      * destruct H; destruct H0; assumption.
+  - destruct H; destruct H.
+    + split; intuition.
+    + split; rewrite H0; destruct H; intuition.
+Qed.
+
+Lemma finite_power_set:
+  forall {U} (X : Ensemble U), Finite _ X -> Finite _ (Power_set _ X).
+Proof.
+  induction 1.
+  - rewrite power_set_empty_set; apply Singleton_is_finite.
+  - rewrite power_set_add.
+    apply Union_preserves_Finite.
+    + assumption.
+    + apply finite_image; assumption.
+Qed.
+
+
+Lemma big_union_power_set:
+  forall {U} (Xs : Ensemble (Ensemble U)),
+  Included _ Xs (Power_set _ (Big_union Xs)).
+Proof.
+  intros U Xs X Xs_X; split; intros x X_x.
+  apply (Big_union_def _ X); assumption.
+Qed.
+
+Lemma finite_big_union:
+  forall {U} (Xs : Ensemble (Ensemble U)),
+  Finite _ (Big_union Xs) -> Finite _ Xs.
+Proof.
+  intros U Xs fin.
+  apply (Finite_downward_closed _ (Power_set _ (Big_union Xs))).
+  - apply finite_power_set; assumption.
+  - apply big_union_power_set.
+Qed.
+
 Module Type Dilworth.
 
   Parameter U : Type.
@@ -754,6 +818,13 @@ Module Type Dilworth.
                 - intros E Cs0_E; destruct Cs0_E as [y A2_y z z_eq]; rewrite z_eq in *; clear z z_eq.
                   apply g0_dom; assumption.
                 - auto.
+              }
+              pose injective_preserves_cardinal.
+              pose incl_st_card_lt.
+              pose finite_cardinal.
+              assert (Finite _ Cs0).
+              { (* amazingly we have not proved this before? *)
+                apply finite_big_union; rewrite <- S'_eq; assumption.
               }
               admit.
           - apply (ex_intro _ U_wit); intuition.
