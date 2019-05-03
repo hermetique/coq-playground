@@ -23,6 +23,7 @@ Require Import Finite_sets.
 Require Import Finite_sets_facts.
 Require Import Coq.Logic.ClassicalChoice.
 Require Import Image.
+Require Import Coq.Sets.Finite_sets.
 
 (* Hmm, need to do some more digging into foundations... we are using classical logic
    so we should be able to define a function corresponding to In _ _ _. *)
@@ -112,6 +113,28 @@ Proof.
   intros; rewrite H; auto.
 Qed.
 
+Definition injective_on {U V} (X : Ensemble U) (f : U -> V) :=
+  forall x y, In _ X x -> In _ X y -> f x = f y -> x = y.
+
+Lemma injective_to_injective_in:
+  forall {U V} X (f : U -> V), injective _ _ f -> injective_on X f.
+Proof.
+  unfold injective; unfold injective_on; auto.
+Qed.
+
+Lemma injective_on_mono:
+  forall {U V} X Y (f : U -> V), Included _ X Y -> injective_on Y f -> injective_on X f.
+Proof.
+  unfold injective_on; auto.
+Qed.
+
+Lemma injective_on_preserves_cardinal:
+  forall {U V} (X : Ensemble U) (f : U -> V) (n : nat),
+  injective_on X f -> cardinal U X n -> forall n' : nat, cardinal V (Im U V X f) n' -> n' = n.
+pose injective_preserves_cardinal. (* The proof should be similar to that one. *)
+Admitted.
+
+
 Module Type Dilworth.
 
   Parameter U : Type.
@@ -126,7 +149,7 @@ Module Type Dilworth.
     (exists f : U -> Ensemble U,
       (forall x : U, In _ A x -> In _ (f x) x) /\
       (forall x : U, In _ A x -> In _ Cs (f x)) /\
-      (forall x y : U, In _ A x -> In _ A y -> f x = f y -> x = y)).
+      (injective_on A f)).
   Proof.
     intros Cs A Incl chn achn.
     assert (forall x : U, exists C : Ensemble U, In _ A x -> In _ Cs C /\ In _ C x).
@@ -310,7 +333,7 @@ Module Type Dilworth.
       anti_chain _ R A /\
       (forall X : Ensemble U, In _ Cs X -> In _ A (f X)) /\
       (forall X : Ensemble U, In _ Cs X -> In _ X (f X)) /\
-      (forall X Y : Ensemble U, In _ Cs X -> In _ Cs Y -> f X = f Y -> X = Y)).
+      (injective_on Cs f)).
   Proof.
     intros Fin inh.
     destruct inh as [U_wit].
@@ -328,7 +351,7 @@ Module Type Dilworth.
       + apply anti_chain_Empty_set.
       + intros; destruct H.
       + intros; destruct H.
-      + intros; destruct H.
+      + unfold injective_on; intros; destruct H.
     - (* we have picked a minimum element s in S... apply the induction hypothesis to S - {s}. *)
       destruct mem as (s & S' & S_eq & not_S'_s & s_min).
       assert (fin_S' : Finite _ S').
@@ -351,7 +374,7 @@ Module Type Dilworth.
       pose (anti_chain0 (f : Ensemble U -> U) :=
         anti_chain _ R (Im _ _ Cs0 f) /\
         (forall C, In _ Cs0 C -> In _ C (f C)) /\
-        (forall C D, In _ Cs0 C -> In _ Cs0 D -> f C = f D -> C = D)).
+        (injective_on Cs0 f)).
       assert (ac0_f0 : anti_chain0 f0).
       {
         destruct (dilworth_easy Cs0 A0 sup_A0 chain_Cs0 achain_A0) as (g0 & g0_A0 & g0_ran & g0_inj).
