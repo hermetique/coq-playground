@@ -584,12 +584,12 @@ Module Type Dilworth.
         }
         assert (Ca_a : In _ Ca a). { intuition. }
         pose (S2 := Setminus _ S' C).
-        assert (Cs1_S' : Included U S2 S').
+        assert (S2_S' : Included U S2 S').
         {
           unfold S2. apply included_setminus.
         }
         destruct (IH S2) as
-          [Cs2 (A2 & f2 & U1_U2 & Cs2_chain & Fin_A2 & A2_Cs2 & ac_A2 & f2_dom & f2_chn & f2_inj)].
+          [Cs2 (A2 & f2 & S2_eq & Cs2_chain & Fin_A2 & A2_Cs2 & ac_A2 & f2_dom & f2_chn & f2_inj)].
         {
           unfold Strict_Included.
           split.
@@ -601,7 +601,7 @@ Module Type Dilworth.
         assert (ac_A1 : anti_chain _ R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
         assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
         {
-          rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite S_eq.
+          rewrite Big_union_Add; rewrite <- S2_eq; unfold S2; rewrite S_eq.
           apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
           - destruct H.
             + destruct (classic (In _ C x)); intuition.
@@ -637,8 +637,8 @@ Module Type Dilworth.
              * a in A1 with R s a.
              * Ca in Cs0 with a in Ca.
              * C: new chain consisting of s and all elements x of Ca with R s x. (In particular, a in C)
-             * Cs1: Cs0 with Ca replaced by the Ca - C.
-             * Cs2: minimal decomposition of Big_union Cs1 into chains.
+             * S2: Big_union Cs0 - C
+             * Cs2: minimal decomposition of S2 into chains.
              * A2 = Im _ _ Cs2 f2: corresponding antichain of the same cardinality.
              * g2 is the inverse of f2, establishing |A2| = |Cs2|
              * g3 : A1 -> Cs2: injective mapping from A1 to Add _ Cs2 C, so |A1| <= |Cs2| + 1.
@@ -662,7 +662,7 @@ Module Type Dilworth.
             {
               apply (Inclusion_is_transitive _ _ (Big_union Cs2)).
               - assumption.
-              - rewrite S'_eq in Cs1_S'; rewrite U1_U2 in Cs1_S'; assumption.
+              - rewrite S'_eq in S2_S'; rewrite S2_eq in S2_S'; assumption.
             }
             destruct (classic (Cs0 = Im _ _ A2 g0)) as [Cs0_eq | nCs0_eq].
             + destruct (injective_on_inverse inh A2 g0 g0_inj) as [f0 f0_prop].
@@ -711,7 +711,7 @@ Module Type Dilworth.
               }
               assert (S2_f0Ca: In _ S2 (f0 Ca)).
               {
-                rewrite U1_U2.
+                rewrite S2_eq.
                 assert (In U A2 (f0 Ca)).
                 {
                   rewrite Cs0_eq in Cs0_Ca; destruct Cs0_Ca as [y y_A2 z z_eq]; rewrite z_eq in *.
@@ -727,6 +727,13 @@ Module Type Dilworth.
               * assumption.
               * unfold In; assumption.
             + (* Now we know that g0 : A2 -> Cs0 is not surjective. *)
+              assert (g0A2_Cs0: Strict_Included _ (Im _ _ A2 g0) Cs0).
+              {
+                split.
+                - intros E Cs0_E; destruct Cs0_E as [y A2_y z z_eq]; rewrite z_eq in *; clear z z_eq.
+                  apply g0_dom; assumption.
+                - auto.
+              }
               admit.
           - apply (ex_intro _ U_wit); intuition.
         }
@@ -739,7 +746,7 @@ Module Type Dilworth.
         * assumption.
         * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
         * apply (Finite_downward_closed _ S'); assumption.
-        * rewrite Big_union_Add; rewrite <- U1_U2; unfold S2.
+        * rewrite Big_union_Add; rewrite <- S2_eq; unfold S2.
           apply (Inclusion_is_transitive _ _ S' _ A1_S').
           intros x S'_x.
           destruct (classic (In _ C x)); intuition.
