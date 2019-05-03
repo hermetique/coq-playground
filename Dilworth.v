@@ -4,9 +4,8 @@ playing with Dilworth's theorem,
 
 https://en.wikipedia.org/wiki/Dilworth's_theorem
 
-This is highly experimental...
-it's somewhat unclear how to best formulate the Theorem.
-
+The proof is complete, but still somewhat experimental...
+It would perhaps be better to state the theorem in terms of cardinalities rather than injections.
 *)
 
 (* Require Import List. *)
@@ -24,6 +23,7 @@ Require Import Finite_sets_facts.
 Require Import Coq.Logic.ClassicalChoice.
 Require Import Image.
 Require Import Coq.Sets.Finite_sets.
+Require Import Omega.
 
 (* Hmm, need to do some more digging into foundations... we are using classical logic
    so we should be able to define a function corresponding to In _ _ _. *)
@@ -155,6 +155,15 @@ Proof.
   rewrite (H x z); auto with sets.
 Qed.
 
+Lemma injective_on_preserves_cardinal2:
+  forall {U V} (X : Ensemble U) (f : U -> V) (n : nat),
+  injective_on X f -> cardinal _ X n -> cardinal _ (Im _ _ X f) n.
+Proof.
+  intros U V X f n inj X_n.
+  destruct (cardinal_Im_intro _ _ X f n X_n) as [n'].
+  rewrite (injective_on_preserves_cardinal X f n inj X_n n' H) in H; assumption.
+Qed.
+
 Lemma injective_on_inverse:
   forall {U} (i : inhabited U) {V} (X : Ensemble U) (f : U -> V),
   injective_on X f -> exists g, forall x, In _ X x -> g (f x) = x.
@@ -201,6 +210,26 @@ Proof.
   - destruct H as [x X_x z z_eq]; rewrite z_eq in *; clear z z_eq.
     rewrite id; auto.
   - apply (Im_intro _ _ _ _ x); try symmetry; auto.
+Qed.
+
+Lemma injective_on_preserves_cardinal3:
+  forall {U} (i : inhabited U) {V} (X : Ensemble U) (f : U -> V) (n : nat),
+  injective_on X f -> cardinal _ (Im _ _ X f) n -> cardinal _ X n.
+Proof.
+  intros U i V X f n inj X_n.
+  destruct (injective_on_inverse i X f inj) as [g g_prop].
+  pose (H := injective_on_preserves_cardinal2 (Im _ _ X f) g n).
+  rewrite image_compose in H.
+  rewrite image_ident_on in H.
+  - apply H.
+    + intros x y fX_x fX_y gx_gy.
+      destruct fX_x as [x X_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+      destruct fX_y as [y X_y z z_eq]; rewrite z_eq in *; clear z z_eq.
+      rewrite g_prop in gx_gy; try assumption.
+      rewrite g_prop in gx_gy; try assumption.
+      rewrite gx_gy; trivial.
+    + assumption.
+  - assumption.
 Qed.
 
 Lemma power_set_empty_set:
@@ -714,8 +743,7 @@ Module Type Dilworth.
           }
           destruct (dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
           intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs2_D | not_Cs2_D].
-          - (* TODO: tricky cardinality reasoning coming up. Coq.Sets.Finite_sets should be useful here. *)
-            (* At this point, we have:
+          - (* At this point, we have:
              * S = Add _ S' s.
              * Cs0: (minimal) decomposition of S' into chains.
              * A1 = Im _ _ Cs0 f1: corresponding antichain of the same cardinality with maximal elements.
@@ -819,18 +847,59 @@ Module Type Dilworth.
                   apply g0_dom; assumption.
                 - auto.
               }
-              pose injective_preserves_cardinal.
-              pose incl_st_card_lt.
-              pose finite_cardinal.
-              assert (Finite _ Cs0).
-              { (* amazingly we have not proved this before? *)
-                apply finite_big_union; rewrite <- S'_eq; assumption.
+              assert (Fin_Cs0: Finite _ Cs0).
+              { apply finite_big_union; rewrite <- S'_eq; assumption. }
+              assert (Fin_Cs2: Finite _ Cs2).
+              { apply finite_big_union; rewrite <- S2_eq; apply (Finite_downward_closed _ S'); assumption. }
+              destruct (finite_cardinal _ _ Fin_Cs0) as [n Cs0_n].
+              assert (A1_n : cardinal _ A1 n).
+              {
+                unfold A1; apply injective_on_preserves_cardinal2.
+                - destruct ac0_f1 as (_ & _ & inj); assumption.
+                - assumption.
               }
-              admit.
+              destruct (finite_cardinal _ _ (Add_preserves_Finite _ _ C Fin_Cs2)) as [n' Cs2C_n'].
+              assert (g3A1_n : cardinal _ (Im _ _ A1 g3) n).
+              { apply injective_on_preserves_cardinal2; assumption. }
+              assert (g3A1_Cs2C : Included _ (Im _ _ A1 g3) (Add _ Cs2 C)).
+              {
+                intros y g3A2_y.
+                destruct g3A2_y as [y y_eq t t_eq]; rewrite t_eq in *; clear t t_eq; auto.
+              }
+              assert (n_n': n = n').
+              { (* we compare cardinalities. Coq.Sets.Finite_sets is very useful here. *)
+                destruct (finite_cardinal _ _ Fin_A2) as [m A2_m].
+                assert (g0A2_m : cardinal _ (Im _ _ A2 g0) m).
+                { apply injective_on_preserves_cardinal2; assumption. }
+                assert (n_gt_m : n > m).
+                { apply (fun a b => incl_st_card_lt _ _ _ a _ _ b g0A2_Cs0); assumption. }
+                assert (Cs2_m : cardinal _ Cs2 m).
+                {
+                  apply injective_on_preserves_cardinal3 with _ f2.
+                  - auto.
+                  - assumption.
+                  - rewrite <- A2_eq; assumption.
+                }
+                assert (n'_le_Sm : n' <= Datatypes.S m). { apply card_Add_gen with _ Cs2 C; assumption. }
+                pose (card_Add_gen _ Cs2 C m n' Cs2_m Cs2C_n').
+                assert (n <= n').
+                { apply incl_card_le with _ (Im _ _ A1 g3) (Add _ Cs2 C); assumption. }
+                omega.
+              }
+              assert (A1g3_eq_Cs2C : (Im _ _ A1 g3) = (Add _ Cs2 C)).
+              {
+                apply NNPP; intro.
+                assert (Strict_Included _ (Im _ _ A1 g3) (Add _ Cs2 C)). { intuition. }
+                pose (incl_st_card_lt _ _ _ g3A1_n _ _ Cs2C_n' H0).
+                omega.
+              }
+              rewrite <- A1g3_eq_Cs2C in *.
+              destruct Cs2_D as [z z_eq t t_eq]; rewrite t_eq in *; clear t t_eq.
+              apply (ex_intro _ z); auto.
           - apply (ex_intro _ U_wit); intuition.
         }
         destruct (choice _ H) as [f3 f3_prop]; clear H.
-        (* Tricky instantiations follow. *)
+        (* Finally, we can instantiate the goal. *)
         apply (ex_intro _ (Add _ Cs2 C)).
         apply (ex_intro _ A1).
         apply (ex_intro _ f3).
@@ -915,6 +984,6 @@ Module Type Dilworth.
             destruct not_S'_s; unfold A1 in A1_S'.
             apply (A1_S' _ (Im_intro _ _ Cs0 f1 D Cs0_D _ H)).
           -- destruct s_C; destruct s_D; auto.
-  Abort All.
+Qed.
 
 End Dilworth.
