@@ -14,9 +14,8 @@ Require Import Relations_1.
 Require Import Ensembles.
 Require Import Finite_sets.
 Require Import Finite_sets_facts.
-Require Import Coq.Logic.ClassicalChoice.
+Require Import ClassicalChoice.
 Require Import Image.
-Require Import Coq.Sets.Finite_sets.
 Require Import Omega.
 
 (* Hmm, need to do some more digging into foundations... we are using classical logic
