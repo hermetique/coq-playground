@@ -583,16 +583,10 @@ Module Type Dilworth.
             [_ [x x_prop] | x []]; destruct y_prop as [_ [y y_prop] | y []]; intuition.
         }
         assert (Ca_a : In _ Ca a). { intuition. }
-        pose (S2 := Big_union (Add _ (Subtract _ Cs0 Ca) (Setminus _ Ca C))).
+        pose (S2 := Setminus _ S' C).
         assert (Cs1_S' : Included U S2 S').
         {
-          intros x S2_x.
-          unfold S2 in S2_x; clear S2.
-          rewrite S'_eq.
-          rewrite Big_union_Add in S2_x.
-          destruct S2_x.
-          - apply (Big_union_mono _ _ (included_subtract Cs0 Ca)); assumption.
-          - destruct H; eauto with sets.
+          unfold S2. apply included_setminus.
         }
         destruct (IH S2) as
           [Cs2 (A2 & f2 & U1_U2 & Cs2_chain & Fin_A2 & A2_Cs2 & ac_A2 & f2_dom & f2_chn & f2_inj)].
@@ -607,23 +601,16 @@ Module Type Dilworth.
         assert (ac_A1 : anti_chain _ R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
         assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
         {
-          rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite S_eq; rewrite S'_eq.
-          rewrite Big_union_Add; unfold C; rewrite <- Union_add.
-          apply (subst (fun H => Add _ H _)).
+          rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite S_eq.
           apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
-          -- destruct H as [D Cs0_D x D_x].
-            destruct (classic (D = Ca)) as [ | ].
-            ++ rewrite H in *; clear H.
-              destruct (classic (R s x)).
-              ** apply Union_intror; split; assumption.
-              ** apply Union_introl; apply Union_intror; split; try assumption.
-                intro; destruct H0.
-                --- destruct H0; unfold In in H1; intuition.
-                --- destruct H0; destruct Ord as [r _ _]; unfold Reflexive in r; intuition.
-            ++ apply Union_introl; apply Union_introl; apply (Big_union_def _ D).
-              ** split; auto; intro; destruct H0; auto.
-              ** assumption.
-          -- destruct H as [_ [_ [D [Cs0_D _] x D1_x] | x [Ca_x _] ] | _ [x Ca_x _] ]; eauto with sets.
+          - destruct H.
+            + destruct (classic (In _ C x)); intuition.
+            + destruct H; unfold C; intuition.
+          - destruct H as [x [S'_x _] | ].
+            + auto with sets.
+            + unfold C in H; destruct H as [_ [x Ca_x _] | ].
+              * rewrite S'_eq; apply Add_intro1; apply (Big_union_def _ Ca); assumption.
+              * destruct H; auto with sets.
         }
         destruct (dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
         { rewrite <- S_eq'; rewrite S_eq; intuition. }
@@ -722,8 +709,25 @@ Module Type Dilworth.
                 }
                 destruct Ord as [_ t _]; apply (t s a); assumption.
               }
+              assert (S2_f0Ca: In _ S2 (f0 Ca)).
+              {
+                rewrite U1_U2.
+                assert (In U A2 (f0 Ca)).
+                {
+                  rewrite Cs0_eq in Cs0_Ca; destruct Cs0_Ca as [y y_A2 z z_eq]; rewrite z_eq in *.
+                  rewrite f0_prop; assumption.
+                }
+                apply (Big_union_def _ (g2 (f0 Ca))); intuition.
+              }
+              unfold S2 in S2_f0Ca; destruct S2_f0Ca.
+              unfold C in H2.
+              destruct H2.
+              apply Add_intro1.
+              split.
+              * assumption.
+              * unfold In; assumption.
+            + (* Now we know that g0 : A2 -> Cs0 is not surjective. *)
               admit.
-            + admit.
           - apply (ex_intro _ U_wit); intuition.
         }
         destruct (choice _ H) as [f3 f3_prop]; clear H.
@@ -735,25 +739,10 @@ Module Type Dilworth.
         * assumption.
         * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
         * apply (Finite_downward_closed _ S'); assumption.
-        * rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite Big_union_Add.
-          intros x A1_x.
-          destruct (classic (x = a)).
-          -- rewrite H in *; clear H.
-            apply Union_intror; unfold C; apply Add_intro1; split; assumption.
-          -- unfold A1 in A1_x; destruct A1_x as [D Cs0_D z z_eq]; rewrite z_eq in *; clear z z_eq.
-            apply Union_introl; apply Union_introl; apply (Big_union_def _ D); repeat split.
-            ++ assumption.
-            ++ intro; destruct H0; destruct H.
-              unfold A1 in A1_a; destruct A1_a as [E Cs0_E z z_eq]; rewrite z_eq in *; clear z z_eq.
-              assert (chain_Ca : chain _ R Ca). { intuition. }
-              destruct (chain_Ca (f1 Ca) (f1 E)).
-              ** pose (f1_prop Ca); intuition.
-              ** pose (f1_prop E); intuition.
-              ** destruct (f1_prop E) as (_ & _ & X). assumption.
-                apply X; assumption.
-              ** destruct (f1_prop Ca) as (_ & _ & X). assumption.
-                symmetry; apply X; assumption.
-            ++ pose (f1_prop D); intuition.
+        * rewrite Big_union_Add; rewrite <- U1_U2; unfold S2.
+          apply (Inclusion_is_transitive _ _ S' _ A1_S').
+          intros x S'_x.
+          destruct (classic (In _ C x)); intuition.
         * assumption.
         * intros; pose (f3_prop X); intuition.
         * intros; destruct (f3_prop X H) as [A1_f3X g3f3X_X]; pose (gm := g3_mem (f3 X)).
