@@ -128,11 +128,32 @@ Proof.
   unfold injective_on; auto.
 Qed.
 
+(* Lemma adapted from Sets.Image.injective_preserves_cardinal - Note LGPL 2.1 license! *)
 Lemma injective_on_preserves_cardinal:
   forall {U V} (X : Ensemble U) (f : U -> V) (n : nat),
   injective_on X f -> cardinal U X n -> forall n' : nat, cardinal V (Im U V X f) n' -> n' = n.
-pose injective_preserves_cardinal. (* The proof should be similar to that one. *)
-Admitted.
+Proof.
+  induction 2 as [| A n H'0 H'1 x H'2]; auto with sets.
+  rewrite (image_empty _ _ f).
+  intros n' CE.
+  apply cardinal_unicity with V (Empty_set V); auto with sets.
+  intro n'.
+  rewrite (Im_add _ _ A x f).
+  intro H'3.
+  elim cardinal_Im_intro with _ _ A f n; trivial with sets.
+  intros i CI.
+  assert (H' : injective_on A f).
+  { apply (injective_on_mono _ (Add _ A x)); auto with sets. }
+  lapply (H'1 H' i); trivial with sets.
+  cut (~ In _ (Im _ _ A f) (f x)).
+  intros H0 H1.
+  apply cardinal_unicity with V (Add _ (Im _ _ A f) (f x)); trivial with sets.
+  apply card_add; auto with sets.
+  rewrite <- H1; trivial with sets.
+  red; intro; apply H'2.
+  destruct (Im_inv _ _ _ _ _ H0) as (z & A_z & fz_fx).
+  rewrite (H x z); auto with sets.
+Qed.
 
 Lemma injective_on_inverse:
   forall {U} (i : inhabited U) {V} (X : Ensemble U) (f : U -> V),
