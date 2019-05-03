@@ -134,6 +134,53 @@ Lemma injective_on_preserves_cardinal:
 pose injective_preserves_cardinal. (* The proof should be similar to that one. *)
 Admitted.
 
+Lemma injective_on_inverse:
+  forall {U} (i : inhabited U) {V} (X : Ensemble U) (f : U -> V),
+  injective_on X f -> exists g, forall x, In _ X x -> g (f x) = x.
+Proof.
+  intros U i V X f inj.
+  assert (forall y, exists x, forall z, In _ X z -> f z = y -> z = x).
+  {
+    intros.
+    destruct (classic (exists x, In U X x /\ f x = y)).
+    - destruct H as (x & X_x & fx_y).
+      apply (ex_intro _ x).
+      intros z X_z fz_y.
+      apply inj; try assumption.
+      rewrite fx_y; rewrite fz_y; auto.
+    - destruct i as [u]; apply (ex_intro _ u).
+      intros z X_z fz_y.
+      destruct H.
+      apply (ex_intro _ z); auto.
+  }
+  destruct (choice _ H) as [g g_prop].
+  apply (ex_intro _ g).
+  intros x X_x.
+  rewrite <- (g_prop (f x) x); auto.
+Qed.
+
+Lemma image_compose:
+  forall {U V W} (X : Ensemble U) (f : U -> V) (g : V -> W),
+  Im _ _ (Im _ _ X f) g = Im _ _ X (fun x => g (f x)).
+Proof.
+  intros.
+  apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
+  - destruct H as [_ [x X_x u u_eq] t t_eq]; rewrite u_eq in *; rewrite t_eq in *; clear t t_eq u u_eq.
+    apply (Im_intro _ _ _ _ x); auto.
+  - destruct H as [x X_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+    auto with sets.
+Qed.
+
+Lemma image_ident_on:
+  forall {U} (X : Ensemble U) (f : U -> U),
+  (forall x, In _ X x -> f x = x) -> Im _ _ X f = X.
+Proof.
+  intros U X f id.
+  apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
+  - destruct H as [x X_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+    rewrite id; auto.
+  - apply (Im_intro _ _ _ _ x); try symmetry; auto.
+Qed.
 
 Module Type Dilworth.
 
@@ -336,7 +383,7 @@ Module Type Dilworth.
       (injective_on Cs f)).
   Proof.
     intros Fin inh.
-    destruct inh as [U_wit].
+    destruct (inh) as [U_wit].
     induction Fin as [S Fin IH] using Generalized_induction_on_finite_sets.
     destruct (split_min_element _ Fin) as [empty | mem].
     - (* the empty set is decomposed into an empty set of chains and an empty antichain *)
@@ -535,21 +582,21 @@ Module Type Dilworth.
           intros x y x_prop y_prop; destruct x_prop as
             [_ [x x_prop] | x []]; destruct y_prop as [_ [y y_prop] | y []]; intuition.
         }
-        pose (Cs1 := Add _ (Subtract _ Cs0 Ca) (Setminus _ Ca C)).
         assert (Ca_a : In _ Ca a). { intuition. }
-        destruct (IH (Big_union Cs1)) as
+        pose (S2 := Big_union (Add _ (Subtract _ Cs0 Ca) (Setminus _ Ca C))).
+        assert (Cs1_S' : Included U S2 S').
+        {
+          intros x S2_x.
+          unfold S2 in S2_x; clear S2.
+          rewrite S'_eq.
+          rewrite Big_union_Add in S2_x.
+          destruct S2_x.
+          - apply (Big_union_mono _ _ (included_subtract Cs0 Ca)); assumption.
+          - destruct H; eauto with sets.
+        }
+        destruct (IH S2) as
           [Cs2 (A2 & f2 & U1_U2 & Cs2_chain & Fin_A2 & A2_Cs2 & ac_A2 & f2_dom & f2_chn & f2_inj)].
         {
-          assert (Cs1_S' : Included U (Big_union Cs1) S').
-          {
-            intros x Cs1_x.
-            unfold Cs1 in Cs1_x; clear Cs1.
-            rewrite S'_eq.
-            rewrite Big_union_Add in Cs1_x.
-            destruct Cs1_x.
-            - apply (Big_union_mono _ _ (included_subtract Cs0 Ca)); assumption.
-            - destruct H; eauto with sets.
-          }
           unfold Strict_Included.
           split.
           - rewrite S_eq; intuition.
@@ -560,7 +607,7 @@ Module Type Dilworth.
         assert (ac_A1 : anti_chain _ R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
         assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
         {
-          rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite S_eq; rewrite S'_eq.
+          rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite S_eq; rewrite S'_eq.
           rewrite Big_union_Add; unfold C; rewrite <- Union_add.
           apply (subst (fun H => Add _ H _)).
           apply Extensionality_Ensembles; unfold Same_set; split; intros x H.
@@ -584,10 +631,99 @@ Module Type Dilworth.
         { assumption. }
         assert (forall D, exists x, In _ (Add _ Cs2 C) D -> In _ A1 x /\ g3 x = D).
         {
+          assert (f1Ca_a: f1 Ca = a).
+          {
+            assert (In _ A1 (f1 Ca)). { unfold A1; intuition. }
+            destruct (chain_Cs0 _ Cs0_Ca (f1 Ca) a).
+            - pose (f1_prop Ca); intuition.
+            - assumption.
+            - destruct (ac_A1 (f1 Ca) a); auto.
+            - destruct (ac_A1 a (f1 Ca)); auto.
+          }
           destruct (dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
-          intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs3_D | not_Cs3_D].
+          intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs2_D | not_Cs2_D].
           - (* TODO: tricky cardinality reasoning coming up. Coq.Sets.Finite_sets should be useful here. *)
-            admit.
+            (* At this point, we have:
+             * S = Add _ S' s.
+             * Cs0: (minimal) decomposition of S' into chains.
+             * A1 = Im _ _ Cs0 f1: corresponding antichain of the same cardinality with maximal elements.
+             * a in A1 with R s a.
+             * Ca in Cs0 with a in Ca.
+             * C: new chain consisting of s and all elements x of Ca with R s x. (In particular, a in C)
+             * Cs1: Cs0 with Ca replaced by the Ca - C.
+             * Cs2: minimal decomposition of Big_union Cs1 into chains.
+             * A2 = Im _ _ Cs2 f2: corresponding antichain of the same cardinality.
+             * g2 is the inverse of f2, establishing |A2| = |Cs2|
+             * g3 : A1 -> Cs2: injective mapping from A1 to Add _ Cs2 C, so |A1| <= |Cs2| + 1.
+             *
+             * The argument hinges on showing that |Cs2| = |A2| < |A1| = |Cs0|.
+             * We get an injection A2 -> Cs0 from dilworth_easy...
+             *)
+            assert (A2_eq: A2 = Im _ _ Cs2 f2).
+            {
+              apply Extensionality_Ensembles; split; unfold Included; intros x H.
+              - apply (Im_intro _ _ Cs2 f2 (g2 x)).
+                + intuition.
+                + assert (chn_g2x : chain _ R (g2 x)). { intuition. }
+                  destruct (chn_g2x x (f2 (g2 x))). { intuition. } { intuition. }
+                  * apply ac_A2; intuition.
+                  * symmetry; apply ac_A2; intuition.
+              - destruct H as [E Cs2_E z z_eq]; rewrite z_eq in *; clear z z_eq.
+                intuition.
+            }
+            destruct (dilworth_easy Cs0 A2) as (g0 & g0_mem & g0_dom & g0_inj); try assumption.
+            {
+              apply (Inclusion_is_transitive _ _ (Big_union Cs2)).
+              - assumption.
+              - rewrite S'_eq in Cs1_S'; rewrite U1_U2 in Cs1_S'; assumption.
+            }
+            destruct (classic (Cs0 = Im _ _ A2 g0)) as [Cs0_eq | nCs0_eq].
+            + destruct (injective_on_inverse inh A2 g0 g0_inj) as [f0 f0_prop].
+              assert (g0_prop: forall C, In _ Cs0 C -> g0 (f0 C) = C).
+              {
+                intros E Cs0_E; rewrite Cs0_eq in Cs0_E.
+                destruct Cs0_E as [x A2_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+                rewrite f0_prop; auto.
+              }
+              assert (ac0_f0: anti_chain0 f0).
+              {
+                unfold anti_chain0; rewrite Cs0_eq; repeat split; intros.
+                - rewrite image_compose.
+                  rewrite image_ident_on; assumption.
+                - destruct H as [x A2_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+                  rewrite f0_prop; intuition.
+                - intros x y Cs0_x Cs0_y f0x_f0y.
+                  destruct Cs0_x as [x A2_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+                  destruct Cs0_y as [y A2_y z z_eq]; rewrite z_eq in *; clear z z_eq.
+                  rewrite f0_prop in f0x_f0y; try assumption.
+                  rewrite f0_prop in f0x_f0y; try assumption.
+                  rewrite f0x_f0y; auto.
+              }
+              destruct (f1_prop Ca Cs0_Ca) as (_ & _ & H).
+              pose (H f0 Ca ac0_f0 Cs0_Ca); rewrite f1Ca_a in *.
+              assert (Ca_f0Ca: In _ Ca (f0 Ca)).
+              {
+                assert (In _ A2 (f0 Ca)).
+                {
+                  rewrite Cs0_eq in Cs0_Ca.
+                  destruct Cs0_Ca as [y A2_y z z_eq]; rewrite z_eq in *.
+                  rewrite f0_prop; assumption.
+                }
+                pose (g0_mem (f0 Ca) H0).
+                rewrite g0_prop in i; assumption.
+              }
+              assert (R s (f0 Ca)).
+              {
+                assert (R a (f0 Ca)).
+                {
+                  destruct (chain_Cs0 _ Cs0_Ca (f0 Ca) a); try assumption.
+                  rewrite e; try assumption.
+                  destruct Ord as [r _ _]; apply r.
+                }
+                destruct Ord as [_ t _]; apply (t s a); assumption.
+              }
+              admit.
+            + admit.
           - apply (ex_intro _ U_wit); intuition.
         }
         destruct (choice _ H) as [f3 f3_prop]; clear H.
@@ -599,7 +735,7 @@ Module Type Dilworth.
         * assumption.
         * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
         * apply (Finite_downward_closed _ S'); assumption.
-        * rewrite Big_union_Add; rewrite <- U1_U2; unfold Cs1; rewrite Big_union_Add.
+        * rewrite Big_union_Add; rewrite <- U1_U2; unfold S2; rewrite Big_union_Add.
           intros x A1_x.
           destruct (classic (x = a)).
           -- rewrite H in *; clear H.
