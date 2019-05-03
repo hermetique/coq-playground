@@ -977,7 +977,7 @@ Module Type Dilworth.
             destruct not_S'_s; unfold A1 in A1_S'.
             apply (A1_S' _ (Im_intro _ _ Cs0 f1 D Cs0_D _ H)).
           -- destruct s_C; destruct s_D; auto.
-Qed.
+`Qed.
 
   Corollary Dilworth_easy_cardinal:
     forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n m,
