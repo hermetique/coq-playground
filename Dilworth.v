@@ -8,12 +8,6 @@ The proof is complete, but still somewhat experimental...
 It would perhaps be better to state the theorem in terms of cardinalities rather than injections.
 *)
 
-(* Require Import List. *)
-
-(* Require Import Orders. *)
-
-(* Require Import Coq.Logic.FinFun. *)
-
 Load Big_union.
 Load Chains.
 Require Import Relations_1.
@@ -303,7 +297,7 @@ Module Type Dilworth.
   Parameter R : Relation U.
   Axiom Ord : Order U R.
 
-  Theorem dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
+  Theorem Dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
     Included U A (Big_union Cs) ->
     (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
     anti_chain _ R A ->
@@ -484,7 +478,7 @@ Module Type Dilworth.
         * exfalso; apply (min y); auto.
   Qed.
 
-  Theorem dilworth_hard :
+  Theorem Dilworth_hard :
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) (f : Ensemble U -> U),
       (S = Big_union Cs) /\
@@ -538,7 +532,7 @@ Module Type Dilworth.
         (injective_on Cs0 f)).
       assert (ac0_f0 : anti_chain0 f0).
       {
-        destruct (dilworth_easy Cs0 A0 sup_A0 chain_Cs0 achain_A0) as (g0 & g0_A0 & g0_ran & g0_inj).
+        destruct (Dilworth_easy Cs0 A0 sup_A0 chain_Cs0 achain_A0) as (g0 & g0_A0 & g0_ran & g0_inj).
         assert (g_inv : forall (x : U), In _ A0 x -> f0 (g0 x) = x).
         {
           clear IH s S_eq not_S'_s s_min anti_chain0.
@@ -726,7 +720,7 @@ Module Type Dilworth.
               * rewrite S'_eq; apply Add_intro1; apply (Big_union_def _ Ca); assumption.
               * destruct H; auto with sets.
         }
-        destruct (dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
+        destruct (Dilworth_easy (Add _ Cs2 C) A1) as (g3 & g3_mem & g3_dom & g3_inj).
         { rewrite <- S_eq'; rewrite S_eq; intuition. }
         { intros; repeat destruct H; intuition. }
         { assumption. }
@@ -741,7 +735,7 @@ Module Type Dilworth.
             - destruct (ac_A1 (f1 Ca) a); auto.
             - destruct (ac_A1 a (f1 Ca)); auto.
           }
-          destruct (dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
+          destruct (Dilworth_easy Cs2 A2) as (g2 & g2_mem & g2_dom & g2_inj); try assumption. (* is this useful? *)
           intros; destruct (classic (In _ (Add _ Cs2 C) D)) as [Cs2_D | not_Cs2_D].
           - (* At this point, we have:
              * S = Add _ S' s.
@@ -757,7 +751,7 @@ Module Type Dilworth.
              * g3 : A1 -> Cs2: injective mapping from A1 to Add _ Cs2 C, so |A1| <= |Cs2| + 1.
              *
              * The argument hinges on showing that |Cs2| = |A2| < |A1| = |Cs0|.
-             * We get an injection A2 -> Cs0 from dilworth_easy...
+             * We get an injection A2 -> Cs0 from Dilworth_easy...
              *)
             assert (A2_eq: A2 = Im _ _ Cs2 f2).
             {
@@ -771,7 +765,7 @@ Module Type Dilworth.
               - destruct H as [E Cs2_E z z_eq]; rewrite z_eq in *; clear z z_eq.
                 intuition.
             }
-            destruct (dilworth_easy Cs0 A2) as (g0 & g0_mem & g0_dom & g0_inj); try assumption.
+            destruct (Dilworth_easy Cs0 A2) as (g0 & g0_mem & g0_dom & g0_inj); try assumption.
             {
               apply (Inclusion_is_transitive _ _ (Big_union Cs2)).
               - assumption.
@@ -985,5 +979,54 @@ Module Type Dilworth.
             apply (A1_S' _ (Im_intro _ _ Cs0 f1 D Cs0_D _ H)).
           -- destruct s_C; destruct s_D; auto.
 Qed.
+
+  Corollary Dilworth_easy_cardinal:
+    forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n m,
+      Included U A (Big_union Cs) ->
+      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
+      anti_chain _ R A ->
+      cardinal _ Cs n -> cardinal _ A m -> m <= n.
+  Proof.
+    intros Cs A n m H'0 H'1 H'2 Cs_n A_m.
+    destruct (Dilworth_easy Cs A H'0 H'1 H'2) as (f & f_dom & f_chn & f_inj).
+    apply incl_card_le with _ (Im _ _ A f) Cs.
+    - apply injective_on_preserves_cardinal2; assumption.
+    - assumption.
+    - intros x fA_x.
+      destruct fA_x as [x A_x z z_eq]; rewrite z_eq in *; clear z z_eq.
+      apply f_chn; assumption.
+  Qed.
+
+  Corollary Dilworth_hard_cardinal:
+    Finite U S -> inhabited U ->
+    (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n,
+      (S = Big_union Cs) /\
+      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) /\
+      Finite _ A /\
+      Included _ A (Big_union Cs) /\
+      anti_chain _ R A /\
+      cardinal _ Cs n /\ cardinal _ A n).
+  Proof.
+    intros Fin_S i.
+    destruct (Dilworth_hard Fin_S i) as (Cs & A & f & S_Cs & chn_Cs & Fin_A & A_Cs & ac_A & f_dom & f_chn & f_inj).
+    destruct (finite_cardinal _ _ Fin_A) as [n A_n].
+    apply (ex_intro _ Cs).
+    apply (ex_intro _ A).
+    apply (ex_intro _ n).
+    assert (cardinal (Ensemble U) Cs n).
+    {
+      assert (Fin_Cs : Finite _ Cs). { apply finite_big_union; rewrite <- S_Cs; assumption. }
+      destruct (finite_cardinal _ _ Fin_Cs) as [m Cs_m].
+      assert (n_le_m : n <= m). { apply Dilworth_easy_cardinal with Cs A; assumption. }
+      assert (Included _ (Im _ _ Cs f) A).
+      { intros x fCs_x; destruct fCs_x as [x Cs_x z z_eq]; rewrite z_eq in *; clear z z_eq; auto. }
+      assert (cardinal _ (Im _ _ Cs f) m).
+      { apply injective_on_preserves_cardinal2; assumption. }
+      assert (m_le_n : m <= n). { apply incl_card_le with _ (Im _ _ Cs f) A; assumption. }
+      assert (n_m : n = m). { omega. }
+      rewrite n_m; assumption.
+    }
+    repeat split; assumption.
+  Qed.
 
 End Dilworth.
