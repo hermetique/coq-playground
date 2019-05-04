@@ -1,3 +1,12 @@
+section \<open>Dilworth's theorem\<close>
+text \<open>
+A formalization of Dilworth's theorem, following the easy proof sketched at
+
+@{url \<open>https://en.wikipedia.org/wiki/Dilworth's_theorem\<close>}
+
+Author: Bertram Felgenhauer <int-e@gmx.de>
+\<close>
+
 theory Dilworth
   imports Main
 begin
@@ -136,6 +145,7 @@ proof (induct X arbitrary: thesis rule: finite_psubset_induct)
     proof (cases)
       case 1 (* hard case *)
       define C' where "C' = insert m {x \<in> C. m \<le> x}"
+      have "chain C'" using Cs0(3)[rule_format, of C] 1(1) by (auto simp: C'_def chain_def)
       have "X - C' \<subset> X" using `X - {m} \<subset> X` unfolding C'_def by blast
       from psubset(2)[OF this] guess Cs2 f2 . note Cs2 = this(1-3) and f2 = this(4-6)
       have "f2 ` Cs2 \<subseteq> \<Union>Cs0" using f2(2) Cs0(2) Cs2(2) by (fastforce simp: C'_def)
@@ -165,7 +175,33 @@ proof (induct X arbitrary: thesis rule: finite_psubset_induct)
         case False
         then have "card Cs2 < card Cs0" using Dilworth_easy_card[OF Cs0(1,3) \<open>f2 ` Cs2 \<subseteq> \<Union>Cs0\<close> f2(3)]
           by (simp add: card_image f2(1))
-        then show ?thesis sorry
+        moreover
+        have "finite (insert C' Cs2)" using `finite Cs2` by simp
+        have 1: "\<forall>C \<in> insert C' Cs2. pred_on.chain UNIV (\<le>) C" using `chain C'` Cs2(3) by blast
+        have "f0 C \<in> \<Union>insert C' Cs2" if "C \<in> Cs0" for C
+          using that Cs2(2) f0(2)[rule_format, of C] Cs0(2) by auto
+        then have 2: "f0 ` Cs0 \<subseteq> \<Union>insert C' Cs2" by auto
+        have 3: "anti_chain (f0 ` Cs0)" by fact
+        have "card (f0 ` Cs0) \<le> card (insert C' Cs2)"
+          by (intro Dilworth_easy_card[of "insert C' Cs2" "f0 ` Cs0", THEN conjunct2]) fact+
+        ultimately have Cs0_card: "card Cs0 = card (insert C' Cs2)"
+          using `finite Cs2` `finite Cs0` by (fastforce simp: f0(1) card_image card_insert_if)
+        guess g0 using Dilworth_easy[OF 1 2 \<open>anti_chain (f0 ` Cs0)\<close>] . note g0 = this
+        have Cs2'_eq: "g0 ` f0 ` Cs0 = insert C' Cs2"
+          by (simp add: card_subset_eq card_image Cs0(1) Cs2(1) Cs0_card f0(1) g0(1,2))
+        let ?f0' = "inv_into (f0 ` Cs0) g0"
+        show ?thesis
+        proof (rule psubset(3)[of "insert C' Cs2" ?f0'], goal_cases)
+          case 2
+          have  "C' \<subseteq> X" using m(1) `C \<in> Cs0` Cs0(2) by (auto simp: C'_def)
+          then show ?case using Cs2(2) by blast
+        next
+          case 4 show ?case by (rule inj_on_inv_into) (simp add: Cs2'_eq)
+        next
+          case 5 show ?case unfolding Cs2'_eq[symmetric] using g0(1,3) by simp
+        next
+          case 6 show ?case unfolding Cs2'_eq[symmetric] using g0 \<open>anti_chain (f0 ` Cs0)\<close> by simp
+        qed fact+
       qed
     next
       case 2
