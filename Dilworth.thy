@@ -237,7 +237,7 @@ proof (induct X arbitrary: thesis rule: finite_psubset_induct)
   qed
 qed
 
-theorem Dilworth_hard_card:
+corollary Dilworth_hard_card:
   assumes "finite X"
   obtains Cs A where
     "finite Cs" "\<Union>Cs = X" "\<forall>C \<in> Cs. chain C"
