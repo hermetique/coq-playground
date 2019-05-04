@@ -31,12 +31,11 @@ Proof.
   {
     intros.
     destruct (classic (In U A x)).
-    - apply (ex_intro _ true); intuition.
-    - apply (ex_intro _ false); intuition.
+    - exists true; intuition.
+    - exists false; intuition.
   }
   destruct (choice _ H) as (mem & mem_prop).
-  apply (ex_intro _ mem).
-  assumption.
+  exists mem; assumption.
 Qed.
 
 Lemma included_add:
@@ -167,17 +166,17 @@ Proof.
     intros.
     destruct (classic (exists x, In U X x /\ f x = y)).
     - destruct H as (x & X_x & fx_y).
-      apply (ex_intro _ x).
+      exists x.
       intros z X_z fz_y.
       apply inj; try assumption.
       rewrite fx_y; rewrite fz_y; auto.
-    - destruct i as [u]; apply (ex_intro _ u).
+    - destruct i as [u]; exists u.
       intros z X_z fz_y.
       destruct H.
-      apply (ex_intro _ z); auto.
+      exists z; auto.
   }
   destruct (choice _ H) as [g g_prop].
-  apply (ex_intro _ g).
+  exists g.
   intros x X_x.
   rewrite <- (g_prop (f x) x); auto.
 Qed.
@@ -312,14 +311,14 @@ Module Type Dilworth.
       destruct (classic (In _ A x)) as [A_x | not_A_x].
       + unfold Included in Incl.
         destruct (Incl x A_x) as [C Cs_C x C_x].
-        apply (ex_intro _ C); auto.
+        exists C; auto.
 
-      + apply (ex_intro _ (fun _ => False)).
+      + exists (fun _ => False).
         intro A_x.
         case (not_A_x A_x).
     }
     destruct (choice _ H) as [g g_prop].
-    apply (ex_intro _ g).
+    exists g.
     repeat split.
     - intros x A_x.
       destruct (g_prop x A_x); auto.
@@ -349,7 +348,7 @@ Module Type Dilworth.
     - auto.
     - intros.
       apply or_intror.
-      apply (ex_intro _ x).
+      exists x.
       apply Add_intro2.
   Qed.
 
@@ -361,7 +360,7 @@ Module Type Dilworth.
     classical_left.
     apply Extensionality_Ensembles.
     split; unfold Included; intros x mem.
-    - destruct H; apply (ex_intro _ x mem).
+    - destruct H; exists x; apply mem.
     - destruct mem.
   Qed.
 
@@ -375,7 +374,7 @@ Module Type Dilworth.
     - intros; destruct H.
     - intros x Sx'_x.
       destruct (case_finite_set S Fin) as [empty | elem].
-      + apply (ex_intro _ x').
+      + exists x'.
         rewrite empty.
         split.
         * apply Add_intro2.
@@ -384,7 +383,7 @@ Module Type Dilworth.
         destruct (IH x'' elem) as (z & S_x & max_z).
         clear x'' elem IH.
         destruct (classic (R x' z)) as [Rx'z | not_Rx'z].
-        * apply (ex_intro _ x').
+        * exists x'.
           split.
           -- apply Add_intro2.
           -- intros y Sx'_y Ryx'.
@@ -395,7 +394,7 @@ Module Type Dilworth.
                 unfold Antisymmetric in Anti.
                 exact (Anti _ _ Rx'z Ryx').
              ++ destruct y_x'; auto.
-        * apply (ex_intro _ z).
+        * exists z.
           split.
           -- apply Add_intro1; auto.
           -- intros y Sx'_y Ryz.
@@ -418,9 +417,7 @@ Module Type Dilworth.
       destruct (pick_min_element S Fin x S_x) as [m T].
       clear x S_x.
       destruct T as [S_m m_min].
-      apply (ex_intro _ m).
-      apply (ex_intro _ (Subtract _ S m)).
-      repeat split.
+      exists m; exists (Subtract _ S m); repeat split.
       + apply Extensionality_Ensembles.
         split; unfold Included; intros x mem.
         * destruct (classic (m = x)).
@@ -462,7 +459,7 @@ Module Type Dilworth.
     destruct (split_min_element C Fin) as [empty | min].
     - auto.
     - destruct min as (x & C' & C_eq & x_new & min).
-      refine (or_intror (ex_intro _ x (ex_intro _ C' _))); repeat split.
+      apply or_intror; exists x; exists C'; repeat split.
       + auto.
       + auto.
       + apply (chain_mono _ _ C).
@@ -494,9 +491,7 @@ Module Type Dilworth.
     induction Fin as [S Fin IH] using Generalized_induction_on_finite_sets.
     destruct (split_min_element _ Fin) as [empty | mem].
     - (* the empty set is decomposed into an empty set of chains and an empty antichain *)
-      apply (ex_intro _ (Empty_set _)).
-      apply (ex_intro _ (Empty_set _)).
-      apply (ex_intro _ (fun _ => U_wit)).
+      exists (Empty_set _); exists (Empty_set _); exists (fun _ => U_wit).
       repeat split.
       + auto with sets.
       + intros; destruct H.
@@ -595,12 +590,11 @@ Module Type Dilworth.
             [empty | (x & D' & D_eq & new & D'_chain & x_min)].
           - assert (In _ D (f0 C)).
             {
-              unfold In; unfold D; apply (ex_intro _ f0); auto.
+              unfold In; unfold D; exists f0; auto.
             }
             rewrite empty in H.
             destruct H.
-          - apply (ex_intro _ x).
-            repeat split.
+          - exists x; repeat split.
             * rewrite D_eq in D_sub_C.
               intuition.
             * assert (D_x : In _ D x). { rewrite D_eq; intuition. }
@@ -612,7 +606,7 @@ Module Type Dilworth.
               {
                 assert (D_fC : In _ D (f C)).
                 {
-                  unfold In; unfold D; apply (ex_intro _ f); auto.
+                  unfold In; unfold D; exists f; auto.
                 }
                 rewrite D_eq in D_fC; rewrite in_add_iff in D_fC.
                 destruct D_fC as [x_fC | D'_fC].
@@ -628,7 +622,7 @@ Module Type Dilworth.
               }
               rewrite fE_fC in *.
               destruct Ord as [_ _ a]; apply a; assumption.
-        + apply (ex_intro _ U_wit); intuition.
+        + exists U_wit; intuition.
       }
       destruct (choice _ H) as [f1 f1_prop]; clear H.
       assert (ac0_f1 : anti_chain0 f1).
@@ -888,15 +882,12 @@ Module Type Dilworth.
               }
               rewrite <- A1g3_eq_Cs2C in *.
               destruct Cs2_D as [z z_eq t t_eq]; rewrite t_eq in *; clear t t_eq.
-              apply (ex_intro _ z); auto.
-          - apply (ex_intro _ U_wit); intuition.
+              exists z; auto.
+          - exists U_wit; intuition.
         }
         destruct (choice _ H) as [f3 f3_prop]; clear H.
         (* Finally, we can instantiate the goal. *)
-        apply (ex_intro _ (Add _ Cs2 C)).
-        apply (ex_intro _ A1).
-        apply (ex_intro _ f3).
-        repeat split.
+        exists (Add _ Cs2 C); exists A1; exists f3; repeat split.
         * assumption.
         * intros D H; destruct H as [D Cs2_D | _ []]; intuition.
         * apply (Finite_downward_closed _ S'); assumption.
@@ -913,8 +904,7 @@ Module Type Dilworth.
           destruct (f3_prop _ Cs3_Y) as [_ HY]; rewrite <- HY.
           rewrite f3X_f3Y; auto.
       + (* Easy case: s is incomparable to the maximal antichain *)
-        apply (ex_intro _ (Add _ Cs0 (Singleton _ s))).
-        apply (ex_intro _ (Add _ A1 s)).
+        exists (Add _ Cs0 (Singleton _ s)); exists (Add _ A1 s).
         destruct (mem_ex Cs0) as [mem_Cs0 mem_Cs0_prop].
         pose (f C := if mem_Cs0 C then f1 C else s).
         assert (f_s : f (Singleton _ s) = s).
@@ -936,8 +926,7 @@ Module Type Dilworth.
           destruct (mem_Cs0_prop C) as [mem_Cs0_C _].
           unfold f; rewrite (mem_Cs0_C H); auto.
         }
-        apply (ex_intro _ f).
-        repeat split.
+        exists f; repeat split.
         * rewrite Big_union_Add; rewrite <- S'_eq; rewrite S_eq.
           intuition.
         * intros; destruct H.
@@ -957,7 +946,7 @@ Module Type Dilworth.
             apply ac_f1; assumption.
           -- destruct s_y. destruct ((s_min _ (A1_S' _ A1_x)) R_x_y).
           -- destruct s_x; destruct no_a.
-            apply (ex_intro _ y); intuition.
+            exists y; intuition.
           -- destruct s_x; destruct s_y; auto.
         * intros C [C' Cs0_C' | C' s_C'].
           -- rewrite (f_C C' Cs0_C').
@@ -977,7 +966,7 @@ Module Type Dilworth.
             destruct not_S'_s; unfold A1 in A1_S'.
             apply (A1_S' _ (Im_intro _ _ Cs0 f1 D Cs0_D _ H)).
           -- destruct s_C; destruct s_D; auto.
-`Qed.
+  Qed.
 
   Corollary Dilworth_easy_cardinal:
     forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n m,
@@ -1009,9 +998,7 @@ Module Type Dilworth.
     intros Fin_S i.
     destruct (Dilworth_hard Fin_S i) as (Cs & A & f & S_Cs & chn_Cs & Fin_A & A_Cs & ac_A & f_dom & f_chn & f_inj).
     destruct (finite_cardinal _ _ Fin_A) as [n A_n].
-    apply (ex_intro _ Cs).
-    apply (ex_intro _ A).
-    apply (ex_intro _ n).
+    exists Cs; exists A; exists n.
     assert (cardinal (Ensemble U) Cs n).
     {
       assert (Fin_Cs : Finite _ Cs). { apply finite_big_union; rewrite <- S_Cs; assumption. }
