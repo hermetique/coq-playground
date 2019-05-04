@@ -134,9 +134,39 @@ proof (induct X arbitrary: thesis rule: finite_psubset_induct)
     consider C where "C \<in> Cs0" "m \<le> f1 C" | "\<And>C. C \<in> Cs0 \<Longrightarrow> \<not> m \<le> f1 C" by blast
     then show ?thesis
     proof (cases)
-      case 1
-      (* TODO: hard case *)
-      show ?thesis sorry
+      case 1 (* hard case *)
+      define C' where "C' = insert m {x \<in> C. m \<le> x}"
+      have "X - C' \<subset> X" using `X - {m} \<subset> X` unfolding C'_def by blast
+      from psubset(2)[OF this] guess Cs2 f2 . note Cs2 = this(1-3) and f2 = this(4-6)
+      have "f2 ` Cs2 \<subseteq> \<Union>Cs0" using f2(2) Cs0(2) Cs2(2) by (fastforce simp: C'_def)
+      show ?thesis
+      proof (cases "card (f2 ` Cs2) = card Cs0")
+        case True
+        guess g2 using Dilworth_easy[OF Cs0(3) \<open>f2 ` Cs2 \<subseteq> \<Union>Cs0\<close> f2(3)] . note g2 = this
+        have Cs0_eq: "g2 ` f2 ` Cs2 = Cs0"
+          using g2(1,2) True by (simp add: card_subset_eq card_image Cs0(1))
+        let ?f2' = "inv_into (f2 ` Cs2) g2"
+        have "anti_chain0 ?f2'" unfolding anti_chain0_def
+        proof (intro conjI ballI, goal_cases)
+          case 1 show ?case using Cs0_eq by (simp add: inj_on_inv_into)
+        next
+          case (2 C) then show ?case unfolding Cs0_eq[symmetric] using g2(1,3) by auto
+        next
+          case 3 show ?case unfolding Cs0_eq[symmetric] using f2(3) g2(1) by auto
+        qed
+        moreover have "f1 C \<in> C" "?f2' C \<in> C"
+          using 1(1) `anti_chain0 f1` `anti_chain0 ?f2'` by (auto simp: anti_chain0_def)
+        ultimately have "m \<le> ?f2' C" using 1(1) f1[OF 1(1)]
+          Cs0(3)[rule_format, OF 1(1), unfolded chain_def, rule_format, of "f1 C" "?f2' C"] 1(2)
+          by (auto 0 3)
+        moreover have "?f2' C \<in> \<Union>Cs2" using g2(1) 1(1) Cs0_eq f2(2) by force
+        ultimately show ?thesis using `?f2' C \<in> C` by (simp add: Cs2(2) C'_def)
+      next
+        case False
+        then have "card Cs2 < card Cs0" using Dilworth_easy_card[OF Cs0(1,3) \<open>f2 ` Cs2 \<subseteq> \<Union>Cs0\<close> f2(3)]
+          by (simp add: card_image f2(1))
+        then show ?thesis sorry
+      qed
     next
       case 2
       let ?f2 = "\<lambda>C. if m \<in> C then m else f1 C"
