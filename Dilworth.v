@@ -288,81 +288,36 @@ Proof.
   - apply big_union_power_set.
 Qed.
 
-Module Type Dilworth.
+Lemma case_finite_set:
+  forall {U} (S : Ensemble U),
+  Finite _ S -> S = Empty_set _ \/ exists (x : U), In _ S x.
+Proof.
+  intros U S Fin.
+  case Fin.
+  - auto.
+  - intros.
+    apply or_intror.
+    exists x.
+    apply Add_intro2.
+Qed.
 
-  Parameter U : Type.
-  Parameter S : Ensemble U.
-  Parameter R : Relation U.
-  Axiom Ord : Order U R.
+Lemma case_classic_set:
+  forall {U} (S : Ensemble U),
+  S = Empty_set _ \/ exists (x : U), In _ S x.
+Proof.
+  intros U S.
+  classical_left.
+  apply Extensionality_Ensembles.
+  split; unfold Included; intros x mem.
+  - destruct H; exists x; apply mem.
+  - destruct mem.
+Qed.
 
-  Theorem Dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
-    Included U A (Big_union Cs) ->
-    (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
-    anti_chain _ R A ->
-    (exists f : U -> Ensemble U,
-      (forall x : U, In _ A x -> In _ (f x) x) /\
-      (forall x : U, In _ A x -> In _ Cs (f x)) /\
-      (injective_on A f)).
-  Proof.
-    intros Cs A Incl chn achn.
-    assert (forall x : U, exists C : Ensemble U, In _ A x -> In _ Cs C /\ In _ C x).
-    {
-      intros x.
-      destruct (classic (In _ A x)) as [A_x | not_A_x].
-      + unfold Included in Incl.
-        destruct (Incl x A_x) as [C Cs_C x C_x].
-        exists C; auto.
+Section Order.
 
-      + exists (fun _ => False).
-        intro A_x.
-        case (not_A_x A_x).
-    }
-    destruct (choice _ H) as [g g_prop].
-    exists g.
-    repeat split.
-    - intros x A_x.
-      destruct (g_prop x A_x); auto.
-
-    - intros x A_x.
-      destruct (g_prop x A_x) as [goal _]; auto.
-
-    - intros x y A_x A_y g_x_eq_g_y.
-      pose (g_x := g_prop x A_x).
-      pose (g_y := g_prop y A_y).
-      rewrite g_x_eq_g_y in g_x.
-      destruct g_x as [Cs_g_y g_y_x].
-      destruct g_y as [_ g_y_y].
-      unfold anti_chain in achn.
-      unfold chain in chn.
-      destruct (chn (g y) Cs_g_y x y g_y_x g_y_y) as [Rxy | Ryx].
-      + exact (achn x y A_x A_y Rxy).
-      + exact (eq_sym (achn y x A_y A_x Ryx)).
-  Qed.
-
-  Lemma case_finite_set:
-    forall (S : Ensemble U),
-    Finite _ S -> S = Empty_set _ \/ exists (x : U), In _ S x.
-  Proof.
-    intros S Fin.
-    case Fin.
-    - auto.
-    - intros.
-      apply or_intror.
-      exists x.
-      apply Add_intro2.
-  Qed.
-
-  Lemma case_classic_set:
-    forall (S : Ensemble U),
-    S = Empty_set _ \/ exists (x : U), In _ S x.
-  Proof.
-    intros S.
-    classical_left.
-    apply Extensionality_Ensembles.
-    split; unfold Included; intros x mem.
-    - destruct H; exists x; apply mem.
-    - destruct mem.
-  Qed.
+  Variable U : Type.
+  Variable R : Relation U.
+  Hypothesis Ord : Order U R.
 
   Lemma pick_min_element:
     forall (S : Ensemble U), Finite U S ->
@@ -474,6 +429,59 @@ Module Type Dilworth.
         * exfalso; apply (min y); auto.
   Qed.
 
+End Order.
+
+Section Dilworth.
+
+  Variable U : Type.
+  Variable S : Ensemble U.
+  Variable R : Relation U.
+  Hypothesis Ord : Order U R.
+
+  Theorem Dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
+    Included U A (Big_union Cs) ->
+    (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
+    anti_chain _ R A ->
+    (exists f : U -> Ensemble U,
+      (forall x : U, In _ A x -> In _ (f x) x) /\
+      (forall x : U, In _ A x -> In _ Cs (f x)) /\
+      (injective_on A f)).
+  Proof.
+    intros Cs A Incl chn achn.
+    assert (forall x : U, exists C : Ensemble U, In _ A x -> In _ Cs C /\ In _ C x).
+    {
+      intros x.
+      destruct (classic (In _ A x)) as [A_x | not_A_x].
+      + unfold Included in Incl.
+        destruct (Incl x A_x) as [C Cs_C x C_x].
+        exists C; auto.
+
+      + exists (fun _ => False).
+        intro A_x.
+        case (not_A_x A_x).
+    }
+    destruct (choice _ H) as [g g_prop].
+    exists g.
+    repeat split.
+    - intros x A_x.
+      destruct (g_prop x A_x); auto.
+
+    - intros x A_x.
+      destruct (g_prop x A_x) as [goal _]; auto.
+
+    - intros x y A_x A_y g_x_eq_g_y.
+      pose (g_x := g_prop x A_x).
+      pose (g_y := g_prop y A_y).
+      rewrite g_x_eq_g_y in g_x.
+      destruct g_x as [Cs_g_y g_y_x].
+      destruct g_y as [_ g_y_y].
+      unfold anti_chain in achn.
+      unfold chain in chn.
+      destruct (chn (g y) Cs_g_y x y g_y_x g_y_y) as [Rxy | Ryx].
+      + exact (achn x y A_x A_y Rxy).
+      + exact (eq_sym (achn y x A_y A_x Ryx)).
+  Qed.
+
   Theorem Dilworth_hard :
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) (f : Ensemble U -> U),
@@ -489,7 +497,7 @@ Module Type Dilworth.
     intros Fin inh.
     destruct (inh) as [U_wit].
     induction Fin as [S Fin IH] using Generalized_induction_on_finite_sets.
-    destruct (split_min_element _ Fin) as [empty | mem].
+    destruct (split_min_element _ _ Ord _ Fin) as [empty | mem].
     - (* the empty set is decomposed into an empty set of chains and an empty antichain *)
       exists (Empty_set _); exists (Empty_set _); exists (fun _ => U_wit).
       repeat split.
@@ -586,7 +594,7 @@ Module Type Dilworth.
               apply (Big_union_def Cs0 _ Cs0_C _ C_z).
             - assumption.
           }
-          destruct (split_min_element_chain D D_fin D_chain) as
+          destruct (split_min_element_chain _ _ Ord _ D_fin D_chain) as
             [empty | (x & D' & D_eq & new & D'_chain & x_min)].
           - assert (In _ D (f0 C)).
             {
