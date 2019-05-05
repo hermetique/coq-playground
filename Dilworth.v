@@ -108,7 +108,29 @@ Qed.
 Definition injective_on {U V} (X : Ensemble U) (f : U -> V) :=
   forall x y, In _ X x -> In _ X y -> f x = f y -> x = y.
 
-Lemma injective_to_injective_in:
+Goal
+  forall {U V} (X : Ensemble U) (f : U -> V),
+  injective {z | In _ X z} V (fun x => match x with exist _ x _ => f x end) ->
+  injective_on X f.
+Proof.
+  intros U V X f inj x y X_x X_y fx_fy.
+  pose (H := inj (exist _ x X_x) (exist _ y X_y) fx_fy).
+  (* what goes wrong with  destruct H.  here? *)
+  rewrite (eq_sig_fst H); trivial.
+Qed.
+
+Goal
+  forall {U V} (X : Ensemble U) (f : U -> V),
+  injective_on X f ->
+  injective {z | In _ X z} V (fun x => match x with exist _ x _ => f x end).
+Proof.
+  intros U V X f inj x y H.
+  destruct x as [x X_x]; destruct y as [y X_y].
+  destruct (inj x y X_x X_y H).
+  (* this requires proof irrelevance, whence X_x = X_y *)
+  Abort.
+
+Lemma injective_to_injective_on:
   forall {U V} X (f : U -> V), injective _ _ f -> injective_on X f.
 Proof.
   unfold injective; unfold injective_on; auto.
