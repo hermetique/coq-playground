@@ -5,9 +5,7 @@ Require Import Ensembles.
 
 Section Chains.
 
-  Variable U : Type.
-  Variable R : Relation U.
-  Hypothesis Ord : Order U R.
+  Context {U : Type} (R : Relation U) (Ord : Order U R).
 
   Definition chain (X : Ensemble U) :=
     (forall (x y : U), In U X x -> In U X y -> R x y \/ R y x).

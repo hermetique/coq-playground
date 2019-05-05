@@ -337,9 +337,7 @@ Qed.
 
 Section Order.
 
-  Variable U : Type.
-  Variable R : Relation U.
-  Hypothesis Ord : Order U R.
+  Context {U} (R : Relation U) (Ord : Order U R).
 
   Lemma pick_min_element:
     forall (S : Ensemble U), Finite U S ->
@@ -427,9 +425,9 @@ Section Order.
 
   Lemma split_min_element_chain:
     forall (C : Ensemble U), Finite U C ->
-    chain _ R C ->
+    chain R C ->
     C = Empty_set _ \/
-    (exists (x : U) (C' : Ensemble U), C = Add _ C' x /\ ~ In _ C' x /\ chain _ R C' /\
+    (exists (x : U) (C' : Ensemble U), C = Add _ C' x /\ ~ In _ C' x /\ chain R C' /\
       (forall y : U, In _ C' y -> ~ R y x /\ R x y)).
   Proof.
     intros C Fin chn.
@@ -439,7 +437,7 @@ Section Order.
       apply or_intror; exists x; exists C'; repeat split.
       + auto.
       + auto.
-      + apply (chain_mono _ _ C).
+      + apply (chain_mono _ C).
         * auto.
         * rewrite C_eq; intuition.
       + auto.
@@ -455,15 +453,12 @@ End Order.
 
 Section Dilworth.
 
-  Variable U : Type.
-  Variable S : Ensemble U.
-  Variable R : Relation U.
-  Hypothesis Ord : Order U R.
+  Context {U} (S : Ensemble U) (R : Relation U) (Ord : Order U R).
 
   Theorem Dilworth_easy: forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U),
     Included U A (Big_union Cs) ->
-    (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
-    anti_chain _ R A ->
+    (forall (C : Ensemble U), In _ Cs C -> chain R C) ->
+    anti_chain R A ->
     (exists f : U -> Ensemble U,
       (forall x : U, In _ A x -> In _ (f x) x) /\
       (forall x : U, In _ A x -> In _ Cs (f x)) /\
@@ -508,10 +503,10 @@ Section Dilworth.
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) (f : Ensemble U -> U),
       (S = Big_union Cs) /\
-      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) /\
+      (forall (C : Ensemble U), In _ Cs C -> chain R C) /\
       Finite _ A /\
       Included _ A (Big_union Cs) /\
-      anti_chain _ R A /\
+      anti_chain R A /\
       (forall X : Ensemble U, In _ Cs X -> In _ A (f X)) /\
       (forall X : Ensemble U, In _ Cs X -> In _ X (f X)) /\
       (injective_on Cs f)).
@@ -519,7 +514,7 @@ Section Dilworth.
     intros Fin inh.
     destruct (inh) as [U_wit].
     induction Fin as [S Fin IH] using Generalized_induction_on_finite_sets.
-    destruct (split_min_element _ _ Ord _ Fin) as [empty | mem].
+    destruct (split_min_element _ Ord _ Fin) as [empty | mem].
     - (* the empty set is decomposed into an empty set of chains and an empty antichain *)
       exists (Empty_set _); exists (Empty_set _); exists (fun _ => U_wit).
       repeat split.
@@ -551,7 +546,7 @@ Section Dilworth.
          contains an element from each element of Cs0 (these antichains are characterized by the
          anti_chain0 definition). *)
       pose (anti_chain0 (f : Ensemble U -> U) :=
-        anti_chain _ R (Im _ _ Cs0 f) /\
+        anti_chain R (Im _ _ Cs0 f) /\
         (forall C, In _ Cs0 C -> In _ C (f C)) /\
         (injective_on Cs0 f)).
       assert (ac0_f0 : anti_chain0 f0).
@@ -605,7 +600,7 @@ Section Dilworth.
             destruct ac0_f as (_ & H & _).
             rewrite x_fC; intuition.
           }
-          assert (D_chain : chain _ R D). { apply (chain_mono _ _ C); intuition. }
+          assert (D_chain : chain R D). { apply (chain_mono _ C); intuition. }
           assert (D_fin : Finite _ D).
           {
             apply (Finite_downward_closed _ C).
@@ -616,7 +611,7 @@ Section Dilworth.
               apply (Big_union_def Cs0 _ Cs0_C _ C_z).
             - assumption.
           }
-          destruct (split_min_element_chain _ _ Ord _ D_fin D_chain) as
+          destruct (split_min_element_chain _ Ord _ D_fin D_chain) as
             [empty | (x & D' & D_eq & new & D'_chain & x_min)].
           - assert (In _ D (f0 C)).
             {
@@ -678,7 +673,7 @@ Section Dilworth.
             pose (f1_max fx D ac0_fx Cs0_D).
             assert (fxD : In _ D (fx D)). { pose (C_fxC D). intuition. }
             assert (f1D : In _ D (f1 D)). { intuition. }
-            assert (chD : chain _ R D). { intuition. }
+            assert (chD : chain R D). { intuition. }
             destruct (chD _ _ fxD f1D).
             - rewrite (e H); destruct Ord as [r _ _]; apply r.
             - assumption.
@@ -705,9 +700,9 @@ Section Dilworth.
         rewrite S'_eq in H.
         destruct H as [Ca Cs0_Ca a C_a].
         pose (C := Add _ (Intersection _ Ca (fun x => R s x)) s). (* this will be the chain containing s *)
-        assert (chain_C : chain _ R C).
+        assert (chain_C : chain R C).
         {
-          assert (chain _ R Ca). { intuition. }
+          assert (chain R Ca). { intuition. }
           unfold C; unfold chain; unfold chain in H.
           assert (R s s). { destruct Ord as [r _ _]; unfold Reflexive in r; intuition. }
           intros x y x_prop y_prop; destruct x_prop as
@@ -729,7 +724,7 @@ Section Dilworth.
             intro; rewrite <- H in S_s; intuition.
         }
         clear IH.
-        assert (ac_A1 : anti_chain _ R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
+        assert (ac_A1 : anti_chain R A1). { destruct ac0_f1 as [ac_f1 _]; unfold A1; assumption. }
         assert (S_eq' : S = Big_union (Add (Ensemble U) Cs2 C)).
         {
           rewrite Big_union_Add; rewrite <- S2_eq; unfold S2; rewrite S_eq.
@@ -781,7 +776,7 @@ Section Dilworth.
               apply Extensionality_Ensembles; split; unfold Included; intros x H.
               - apply (Im_intro _ _ Cs2 f2 (g2 x)).
                 + intuition.
-                + assert (chn_g2x : chain _ R (g2 x)). { intuition. }
+                + assert (chn_g2x : chain R (g2 x)). { intuition. }
                   destruct (chn_g2x x (f2 (g2 x))). { intuition. } { intuition. }
                   * apply ac_A2; intuition.
                   * symmetry; apply ac_A2; intuition.
@@ -1001,8 +996,8 @@ Section Dilworth.
   Corollary Dilworth_easy_cardinal:
     forall (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n m,
       Included U A (Big_union Cs) ->
-      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) ->
-      anti_chain _ R A ->
+      (forall (C : Ensemble U), In _ Cs C -> chain R C) ->
+      anti_chain R A ->
       cardinal _ Cs n -> cardinal _ A m -> m <= n.
   Proof.
     intros Cs A n m H'0 H'1 H'2 Cs_n A_m.
@@ -1019,10 +1014,10 @@ Section Dilworth.
     Finite U S -> inhabited U ->
     (exists (Cs : Ensemble (Ensemble U)) (A : Ensemble U) n,
       (S = Big_union Cs) /\
-      (forall (C : Ensemble U), In _ Cs C -> chain _ R C) /\
+      (forall (C : Ensemble U), In _ Cs C -> chain R C) /\
       Finite _ A /\
       Included _ A (Big_union Cs) /\
-      anti_chain _ R A /\
+      anti_chain R A /\
       cardinal _ Cs n /\ cardinal _ A n).
   Proof.
     intros Fin_S i.
